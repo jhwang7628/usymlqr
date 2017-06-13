@@ -46,14 +46,16 @@ $(LIB): $(OBJ_FILES)
 	$(CXX) $(CXX_FLAGS) -shared -o $@ $(OBJ_FILES) $(LIBS) $(LIBS_DIRS)
 
 $(OBJ_FILES): $(CPP_FILES)
-	$(CXX) $(CXX_FLAGS) $(DEFINES) $(INCLUDES) -o $@ -c $(patsubst $(BUILD_DIR)/%.o,$(SRC_DIR)/%.cpp,$@) $(LIBS) $(LIBS_DIRS)
+	$(CXX) $(CXX_FLAGS) $(DEFINES) $(INCLUDES) -o $@ \
+		-c $(patsubst $(BUILD_DIR)/%.o,$(SRC_DIR)/%.cpp,$@) $(LIBS) $(LIBS_DIRS)
 ################################################################################
 ## INDIVIDUAL TESTS
 ################################################################################
 tests: \
 	usymqr_test
 usymqr_test: $(LIB) $(BIN_DIR)
-	$(CXX) $(CXX_FLAGS) $(DEFINES) $(INCLUDES) $(TESTS_DIR)/$@.cpp -o $(BIN_DIR)/$@ $(LIBS) -l$(LIB_NAME) $(LIBS_DIRS) -L$(LIB_DIR)
+	$(CXX) $(CXX_FLAGS) $(DEFINES) $(INCLUDES) $(TESTS_DIR)/$@.cpp \
+		-o $(BIN_DIR)/$@ $(LIBS) -l$(LIB_NAME) $(LIBS_DIRS) -L$(LIB_DIR)
 ################################################################################
 ## CLEAN
 ################################################################################
