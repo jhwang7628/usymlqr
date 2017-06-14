@@ -1,4 +1,5 @@
 #include <memory>
+#include <fstream>
 #include <iostream>
 #include "macros.h"
 #include "sparse_matrix.hpp"
@@ -14,7 +15,7 @@ void Basics() {
 }
 //##############################################################################
 void Tridiagonalization() {
-    const int N = 5; 
+    const int N = 50; 
     using USYM_Vector = typename Sparse_Matrix<double,N>::USYM_Vector;
     using USYM_VectorX= typename Sparse_Matrix<double,N>::USYM_VectorX;
     using USYM_Matrix = typename Sparse_Matrix<double,N>::USYM_Matrix; 
@@ -54,7 +55,7 @@ void Tridiagonalization() {
                                    p3, q3,
                                    T(ii,ii), tmp[0], tmp[1]
                                    ); 
-        if (finish)
+        if (finish || ii==N-1)
             break; 
 
         P.col(ii+1) = p3; 
@@ -62,12 +63,12 @@ void Tridiagonalization() {
         T(ii+1,ii)= tmp[0];
         T(ii,ii+1)= tmp[1]; 
     }
-    PRINT_MAT(A); 
-    PRINT_MAT(P); 
-    PRINT_MAT(Q); 
-    PRINT_MAT(T); 
+    PRINT_MAT(std::cout, A); 
+    PRINT_MAT(std::cout, P); 
+    PRINT_MAT(std::cout, Q); 
+    PRINT_MAT(std::cout, T); 
     std::cout << "P^T A Q should approximate T\n"; 
-    PRINT_MAT(P.transpose()*A*Q); 
+    PRINT_MAT(std::cout, P.transpose()*A*Q); 
 }
 //##############################################################################
 int main() {

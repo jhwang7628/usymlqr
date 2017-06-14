@@ -93,6 +93,9 @@ Step(const USYM_Vector &p_im1, const USYM_Vector &q_im1,
     gamma_ip1 = _v.norm(); 
     if (fabs(beta_ip1) < 1E-8 || fabs(gamma_ip1) < 1E-8)
         return true; 
+    std::cout << "new beta = "    << beta_ip1 
+              << "; new gamma = " << gamma_ip1 
+              << std::endl;
     p_ip1 = _u / beta_ip1;
     q_ip1 = _v / gamma_ip1; 
     return false; 
