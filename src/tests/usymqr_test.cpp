@@ -2,11 +2,13 @@
 #include <fstream>
 #include <iostream>
 #include "macros.h"
+#include "usym_linear_solver.hpp"
 #include "sparse_matrix.hpp"
 #include "usym_tridiag.hpp"
 #include "Eigen/Dense"
 //##############################################################################
 void Basics() {
+    std::cout << "\n========== Basics ===========\n"; 
     Eigen::Matrix3d m;
     m << 1, 2, 3,
          4, 5, 6,
@@ -15,7 +17,8 @@ void Basics() {
 }
 //##############################################################################
 void Tridiagonalization() {
-    const int N = 50; 
+    std::cout << "\n========== Tridiagonalization ===========\n"; 
+    const int N = 10; 
     using USYM_Vector = typename Sparse_Matrix<double,N>::USYM_Vector;
     using USYM_VectorX= typename Sparse_Matrix<double,N>::USYM_VectorX;
     using USYM_Matrix = typename Sparse_Matrix<double,N>::USYM_Matrix; 
@@ -23,7 +26,7 @@ void Tridiagonalization() {
 
     USYM_Matrix A = USYM_Matrix::Random();
     auto sm = std::make_shared<Sparse_Matrix<double,N>>(A); 
-    USym_Tridiag<double,N> tridiag(sm); 
+    USYM_Tridiag<double,N> tridiag(sm); 
 
     // test of complete tridiagonalization
     USYM_Matrix P, Q, T; 
@@ -67,12 +70,40 @@ void Tridiagonalization() {
     PRINT_MAT(std::cout, P); 
     PRINT_MAT(std::cout, Q); 
     PRINT_MAT(std::cout, T); 
-    std::cout << "P^T A Q should approximate T\n"; 
+    std::cout << "P^T A Q should approximate T in exact arithmetics\n"; 
     PRINT_MAT(std::cout, P.transpose()*A*Q); 
+}
+//##############################################################################
+void Linear_Solve()
+{
+    std::cout << "\n========== Linear Solve ===========\n"; 
+    const int N = 5; 
+    using T = double; 
+    using USYM_Vector = typename Sparse_Matrix<double,N>::USYM_Vector;
+    using USYM_VectorX= typename Sparse_Matrix<double,N>::USYM_VectorX;
+    using USYM_Matrix = typename Sparse_Matrix<double,N>::USYM_Matrix; 
+    using USYM_MatrixX= typename Sparse_Matrix<double,N>::USYM_MatrixX; 
+    // initialize A and b
+    USYM_Matrix A;
+    A << 1, 0, 0, 1, 0,
+         0, 1, 0, 1, 0,
+         0, 0, 1, 0, 0,
+         0, 0, 0, 1, 1,
+         0, 0, 0, 0, 1; 
+    USYM_Vector b; 
+    b << 1, 2, 3, 4, 5; 
+    // initialize solver with x0
+    auto sparse_matrix = std::make_shared<Sparse_Matrix<T,N>>(A); 
+    USYM_Linear_Solver<double,N> solver(sparse_matrix,b); 
+    USYM_Vector x0 = USYM_Vector::Zero(); 
+    solver.Initialize(x0); 
+    for (int ii=0; ii<N; ++ii)
+        solver.Step();
 }
 //##############################################################################
 int main() {
     Basics();
     Tridiagonalization();
+    Linear_Solve();
 }
 //##############################################################################

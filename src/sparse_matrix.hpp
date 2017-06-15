@@ -28,6 +28,10 @@ public:
     {
         _m = std::move(rhs._m);
     }
+    USYM_Vector operator*(const USYM_Vector &rhs) const
+    {
+        return _m*rhs;
+    }
     void Premultiply_By_Matrix(const USYM_Vector &v_i, USYM_Vector &v_o); 
     void Premultiply_By_Matrix_Conjugate(const USYM_Vector &v_i, 
                                          USYM_Vector &v_o); 
