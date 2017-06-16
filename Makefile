@@ -18,7 +18,7 @@ BUILD_DIR=build
 LIB_NAME=usymqr
 LIB_DIR=$(BUILD_DIR)/lib
 LIB=$(LIB_DIR)/lib$(LIB_NAME).so
-OUT_DIR=$(SRC_DIR) $(BIN_DIR) $(BUILD_DIR) $(LIB_DIR)
+OUT_DIR=$(BIN_DIR) $(BUILD_DIR) $(LIB_DIR)
 CPP_FILES=$(wildcard $(SRC_DIR)/*.cpp)
 OBJ_FILES=$(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(CPP_FILES))
 INCLUDES =-I$(SRC_DIR)
@@ -30,10 +30,10 @@ INCLUDES+=-I$(EXT_DIR)/eigen # Eigen
 all: directories release
 .PHONY: debug
 debug: CXX_FLAGS += $(DEBUG_FLAG)
-debug: tests
+debug: directories tests
 .PHONY: release
 release: CXX_FLAGS += $(RELEASE_FLAG)
-release: tests
+release: directories tests
 .PHONY: directories
 MKDIR_P = mkdir -p
 directories: ${OUT_DIR}
@@ -42,6 +42,7 @@ ${OUT_DIR}:
 ######################q##########################################################
 ## LIBRARY & OBJ FILES
 ################################################################################
+## TODO need to test if $(OBJ_FILES) is empty, if yes then don't build lib
 $(LIB): $(OBJ_FILES)
 	$(CXX) $(CXX_FLAGS) -shared -o $@ $(OBJ_FILES) $(LIBS) $(LIBS_DIRS)
 
