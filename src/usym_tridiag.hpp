@@ -9,48 +9,41 @@
 //   "Two Conjugate-gradient-type Methods for Unsymmetric Linear Equations"
 //   Algorithm 1. 
 //##############################################################################
-template<typename T, int N>
+template<typename T, class T_Vector, class T_Matrix>
 class USYM_Tridiag
 {
-public: 
-    using USYM_Vector = typename Sparse_Matrix<T,N>::USYM_Vector;
-    using USYM_VectorX= typename Sparse_Matrix<T,N>::USYM_VectorX;
-    using USYM_Matrix = typename Sparse_Matrix<T,N>::USYM_Matrix; 
-    using USYM_MatrixX= typename Sparse_Matrix<T,N>::USYM_MatrixX; 
-    using Sparse_Matrix_Ptr = std::shared_ptr<Sparse_Matrix<T,N>>; 
-
 private: 
-    Sparse_Matrix_Ptr _A; 
+    std::shared_ptr<T_Matrix> _A; 
     // buffer
-    USYM_Vector _u; 
-    USYM_Vector _v; 
+    T_Vector _u; 
+    T_Vector _v; 
     // initial vectors
-    USYM_Vector _b; 
-    USYM_Vector _c; 
+    T_Vector _b; 
+    T_Vector _c; 
 
 public:
     USYM_Tridiag() = default; 
-    USYM_Tridiag(const Sparse_Matrix_Ptr &A)
-        : _A(A)
+    USYM_Tridiag(const std::shared_ptr<T_Matrix> &A)
+        : _A(A), _u(A->rows()), _v(A->rows())
     {
-        _b = USYM_Vector::Random(); 
-        _c = USYM_Vector::Random(); 
+        _b = T_Vector::Random(A->rows()); 
+        _c = T_Vector::Random(A->rows()); 
     }
-    void Set_A(const Sparse_Matrix_Ptr &A){_A = A;}
-    void Set_b(const USYM_Vector &b){_b = b;}
-    void Set_c(const USYM_Vector &c){_c = c;}
+    void Set_A(const std::shared_ptr<T_Matrix> &A){_A = A;}
+    void Set_b(const T_Vector &b){_b = b;}
+    void Set_c(const T_Vector &c){_c = c;}
     // i=1 step needs special initialization
-    bool InitialStep(USYM_Vector &p_1, USYM_Vector &q_1, // output
-                     USYM_Vector &p_2, USYM_Vector &q_2, // output
+    bool InitialStep(T_Vector &p_1, T_Vector &q_1, // output
+                     T_Vector &p_2, T_Vector &q_2, // output
                      T &alpha_1, T &beta_2, T &gamma_2
                     );
-    bool Step(const USYM_Vector &p_im1, const USYM_Vector &q_im1,
-              const USYM_Vector &p_i  , const USYM_Vector &q_i  ,
+    bool Step(const T_Vector &p_im1, const T_Vector &q_im1,
+              const T_Vector &p_i  , const T_Vector &q_i  ,
               const T beta_i, const T gamma_i,
-              USYM_Vector &p_ip1, USYM_Vector &q_ip1, // output
+              T_Vector &p_ip1, T_Vector &q_ip1, // output
               T &alpha_i, T &beta_ip1, T &gamma_ip1); 
-    bool StepInPlace(USYM_Vector &p_im1, USYM_Vector &q_im1, // rewrite im1 
-                     const USYM_Vector &p_i  , const USYM_Vector &q_i  ,
+    bool StepInPlace(T_Vector &p_im1, T_Vector &q_im1, // rewrite im1 
+                     const T_Vector &p_i  , const T_Vector &q_i  ,
                      const T beta_i, const T gamma_i,
                      T &alpha_i, T &beta_ip1, T &gamma_ip1); 
 };
@@ -58,15 +51,15 @@ public:
 //##############################################################################
 // Function InitialStep
 //##############################################################################
-template<typename T, int N> 
-bool USYM_Tridiag<T,N>::
-InitialStep(USYM_Vector &p_1, USYM_Vector &q_1, // output
-            USYM_Vector &p_2, USYM_Vector &q_2,
+template<typename T, class T_Vector, class T_Matrix>
+bool USYM_Tridiag<T,T_Vector,T_Matrix>::
+InitialStep(T_Vector &p_1, T_Vector &q_1, // output
+            T_Vector &p_2, T_Vector &q_2,
             T &alpha_1, T &beta_2, T &gamma_2
            )
 {
-    USYM_Vector p_0 = USYM_Vector::Zero(); 
-    USYM_Vector q_0 = USYM_Vector::Zero(); 
+    T_Vector p_0 = T_Vector::Zero(_A->rows()); 
+    T_Vector q_0 = T_Vector::Zero(_A->rows()); 
     const T beta_1  = _b.norm(); 
     const T gamma_1 = _c.norm(); 
     p_1 = _b/beta_1; 
@@ -82,21 +75,19 @@ InitialStep(USYM_Vector &p_1, USYM_Vector &q_1, // output
 //##############################################################################
 // Function Step
 //##############################################################################
-template<typename T, int N> 
-bool USYM_Tridiag<T,N>::
-Step(const USYM_Vector &p_im1, const USYM_Vector &q_im1,
-     const USYM_Vector &p_i  , const USYM_Vector &q_i ,
+template<typename T, class T_Vector, class T_Matrix>
+bool USYM_Tridiag<T,T_Vector,T_Matrix>::
+Step(const T_Vector &p_im1, const T_Vector &q_im1,
+     const T_Vector &p_i  , const T_Vector &q_i ,
      const T beta_i, const T gamma_i,
-     USYM_Vector &p_ip1, USYM_Vector &q_ip1, // output
+     T_Vector &p_ip1, T_Vector &q_ip1, // output
      T &alpha_i, T &beta_ip1, T &gamma_ip1)
 {
     assert(_A); 
     // u = A q_i - gamma_i p_{i-1}
-    _A->Premultiply_By_Matrix(q_i, _u); 
-    _u -= (gamma_i * p_im1); 
+    _u = (*_A)*q_i - gamma_i*p_im1; 
     // v = A^* p_i - beta_i q_{i-1}
-    _A->Premultiply_By_Matrix_Conjugate(p_i, _v); 
-    _v -= (beta_i * q_im1); 
+    _v = _A->transpose()*p_i - beta_i*q_im1; 
     // alpha = p_i^T u
     alpha_i = p_i.dot(_u); 
     // continue..
@@ -114,22 +105,20 @@ Step(const USYM_Vector &p_im1, const USYM_Vector &q_im1,
 //##############################################################################
 // Function StepInPlace
 //##############################################################################
-template<typename T, int N> 
-bool USYM_Tridiag<T,N>::
-StepInPlace(USYM_Vector &p_im1, USYM_Vector &q_im1,
-            const USYM_Vector &p_i  , const USYM_Vector &q_i ,
+template<typename T, class T_Vector, class T_Matrix>
+bool USYM_Tridiag<T,T_Vector,T_Matrix>::
+StepInPlace(T_Vector &p_im1, T_Vector &q_im1,
+            const T_Vector &p_i  , const T_Vector &q_i ,
             const T beta_i, const T gamma_i,
             T &alpha_i, T &beta_ip1, T &gamma_ip1)
 {
     assert(_A); 
     // u = A q_i - gamma_i p_{i-1}
-    _A->Premultiply_By_Matrix(q_i, _u); 
-    _u -= (gamma_i * p_im1); 
+    _u = (*_A)*q_i - gamma_i*p_im1; 
     // v = A^* p_i - beta_i q_{i-1}
-    _A->Premultiply_By_Matrix_Conjugate(p_i, _v); 
-    _v -= (beta_i * q_im1); 
+    _v = _A->transpose()*p_i - beta_i*q_im1; 
     // alpha = p_i^T u
-    alpha_i = p_i.transpose()*_u; 
+    alpha_i = p_i.dot(_u); 
     // continue..
     _u -= (alpha_i * p_i); 
     _v -= (alpha_i * q_i); 

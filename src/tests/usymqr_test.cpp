@@ -7,42 +7,37 @@
 #include "usym_tridiag.hpp"
 #include "Eigen/Dense"
 //##############################################################################
-static const int N = 20;
 using T = double; 
-using USYM_Vector = typename Sparse_Matrix<T,N>::USYM_Vector;
-using USYM_VectorX= typename Sparse_Matrix<T,N>::USYM_VectorX;
-using USYM_Matrix = typename Sparse_Matrix<T,N>::USYM_Matrix; 
-using USYM_MatrixX= typename Sparse_Matrix<T,N>::USYM_MatrixX; 
+using Vector = Eigen::Matrix<T,Eigen::Dynamic,1>; 
+using Matrix = Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic>; 
 //##############################################################################
-void CheckError(const USYM_Matrix &matA,  
-                const USYM_Matrix &matP,  
-                const USYM_Matrix &matQ, 
-                const USYM_Matrix &matT,
+template<class T_Vector, class T_Matrix>
+void CheckError(const T_Matrix &matA,  
+                const T_Matrix &matP,  
+                const T_Matrix &matQ, 
+                const T_Matrix &matT,
                 const int j) 
 {
-    using Matrix = typename Sparse_Matrix<T,N>::USYM_MatrixX; 
-    using Vector = typename Sparse_Matrix<T,N>::USYM_Vector; 
-
-    const Matrix Q_j = matQ.block(0,0,matQ.rows(),j); 
-    const Matrix P_j = matP.block(0,0,matP.rows(),j); 
-    const Eigen::MatrixXd T_j = matT.block(0,0,j,j); 
+    const T_Matrix Q_j = matQ.block(0,0,matQ.rows(),j); 
+    const T_Matrix P_j = matP.block(0,0,matP.rows(),j); 
+    const T_Matrix T_j = matT.block(0,0,j,j); 
     const T beta_jp1  = matT(j  , j-1); 
     const T gamma_jp1 = matT(j-1, j  ); 
-    const Vector p_jp1 = matP.col(j);
-    const Vector q_jp1 = matQ.col(j);
+    const T_Vector p_jp1 = matP.col(j);
+    const T_Vector q_jp1 = matQ.col(j);
 
     // check AQ_j = P_j S_j = P_j T_j +  beta_{j+1} p_{j+1} e_j^T
-    Matrix AQ = matA * Q_j; 
-    Matrix PT = P_j  * T_j; 
-    Matrix PS = PT; PS.col(j-1) += beta_jp1*p_jp1;
-    Matrix diff_1 = AQ - PS; 
+    T_Matrix AQ = matA * Q_j; 
+    T_Matrix PT = P_j  * T_j; 
+    T_Matrix PS = PT; PS.col(j-1) += beta_jp1*p_jp1;
+    T_Matrix diff_1 = AQ - PS; 
     T res_1 = diff_1.norm(); 
 
     // check A^T P_j = Q_j S_j = Q_j T_j^T +  gamma_{j+1} q_{j+1} e_j^T
-    Matrix AP = matA.transpose() * P_j; 
-    Matrix QT = Q_j  * T_j.transpose(); 
-    Matrix QS = QT; QS.col(j-1) += gamma_jp1*q_jp1;
-    Matrix diff_2 = AP - QS; 
+    T_Matrix AP = matA.transpose() * P_j; 
+    T_Matrix QT = Q_j  * T_j.transpose(); 
+    T_Matrix QS = QT; QS.col(j-1) += gamma_jp1*q_jp1;
+    T_Matrix diff_2 = AP - QS; 
     T res_2 = diff_2.norm(); 
 
     std::cout << "***********************************\n";
@@ -60,24 +55,24 @@ void Basics()
     m << 1, 2, 3,
          4, 5, 6,
          7, 8, 9;
-    Sparse_Matrix<double,10> sm; 
 }
 //##############################################################################
-void Tridiagonalization(const USYM_Vector &b, const USYM_Vector &c,
-                        const USYM_Matrix &matA, 
-                              USYM_Matrix &matP, 
-                              USYM_Matrix &matQ, 
-                              USYM_Matrix &matT)
+template<class T_Vector, class T_Matrix>
+void Tridiagonalization(const T_Vector &b, const T_Vector &c,
+                        const std::shared_ptr<T_Matrix> &matA, 
+                              T_Matrix &matP, 
+                              T_Matrix &matQ, 
+                              T_Matrix &matT)
 {
-    auto sm = std::make_shared<Sparse_Matrix<T,N>>(matA); 
-    USYM_Tridiag<T,N> tridiag(sm); 
+    const int N = b.size();
+    USYM_Tridiag<T,T_Vector,T_Matrix> tridiag(matA); 
 
     // test of complete tridiagonalization
     matP.setZero();
     matQ.setZero();
     matT.setZero(); 
 
-    USYM_Vector p1,q1,p2,q2,p3,q3; 
+    T_Vector p1,q1,p2,q2,p3,q3; 
     tridiag.Set_b(b); 
     tridiag.Set_c(c); 
     tridiag.InitialStep(p1, q1,
@@ -110,31 +105,35 @@ void Tridiagonalization(const USYM_Vector &b, const USYM_Vector &c,
     }
 }
 //##############################################################################
-void Tridiagonalization()
+template<class T_Vector, class T_Matrix>
+void Tridiagonalization(const int N)
 {
     std::cout << "\n========== Tridiagonalization ===========\n"; 
-    USYM_Matrix matA, matP, matQ, matT; 
-    matA = USYM_Matrix::Random();
-    USYM_Vector b = USYM_Vector::Random(); 
-    USYM_Vector c = USYM_Vector::Random(); 
-    Tridiagonalization(b, c, matA, matP, matQ, matT);
-    CheckError(matA, matP, matQ, matT, N-1);
+    std::shared_ptr<T_Matrix> matA(new T_Matrix(N,N));
+    T_Matrix matP(N,N), matQ(N,N), matT(N,N); 
+    (*matA) = T_Matrix::Random(N,N);
+    T_Vector b = T_Vector::Random(N); 
+    T_Vector c = T_Vector::Random(N); 
+    Tridiagonalization<T_Vector,T_Matrix>(b, c, matA, matP, matQ, matT);
+    CheckError<T_Vector,T_Matrix>(*matA, matP, matQ, matT, N-1);
 }
 //##############################################################################
-void Naive_Linear_Solve()
+template<class T_Vector, class T_Matrix>
+T Naive_Linear_Solve(const int N)
 {
     std::cout << "\n========== Naive Linear Solve ===========\n"; 
     // declare
-    USYM_Matrix matA, matP, matQ, matT; 
-    USYM_Vector b, x0, r; 
+    std::shared_ptr<T_Matrix> matA(new T_Matrix(N,N)); 
+    T_Matrix matP(N,N), matQ(N,N), matT(N,N); 
+    T_Vector b(N), x0(N), r(N); 
 
     // initialize and compute tridiagonalization
-    matA = USYM_Matrix::Random();
-    b = USYM_Vector::Random();
+    (*matA) = T_Matrix::Random(N,N);
+    b = T_Vector::Random(N);
     x0.setZero(); 
-    r = (b - matA*x0);
-    USYM_Vector init_b = r; 
-    USYM_Vector init_c = USYM_Vector::Random(); 
+    r = (b - (*matA)*x0);
+    T_Vector init_b = r; 
+    T_Vector init_c = T_Vector::Random(N); 
     Tridiagonalization(init_b, init_c, matA, matP, matQ, matT);
 
     // naive solve with LQ
@@ -156,45 +155,63 @@ void Naive_Linear_Solve()
         }
 
         Eigen::VectorXd x_j_cg = x0 + matQ.block(0,0,matQ.rows(),jj)*h_j;
-        r = (b - matA*x_j_cg); 
+        r = (b - (*matA)*x_j_cg); 
         std::cout << "\nstep " << jj << " has residual = " << r.norm() << std::endl; 
         std::cout << "T_j h_j - beta_1 e_1 = " << (T_j*h_j - b_j).norm() << std::endl;
         std::cout << "x_j_cg=" << x_j_cg.transpose() << std::endl; 
     }
-    std::cout << "x_*   =" << matA.fullPivLu().solve(b).transpose() << std::endl;
+    std::cout << "x_*   =" << matA->fullPivLu().solve(b).transpose() << std::endl;
+    return r.norm();
 }
 //##############################################################################
-void Linear_Solve()
+template<class T_Vector, class T_Matrix>
+void Linear_Solve(const int N)
 {
     std::cout << "\n========== Linear Solve ===========\n"; 
-    const int N = 5; 
-    using T = double; 
-    using USYM_Vector = typename Sparse_Matrix<double,N>::USYM_Vector;
-    using USYM_VectorX= typename Sparse_Matrix<double,N>::USYM_VectorX;
-    using USYM_Matrix = typename Sparse_Matrix<double,N>::USYM_Matrix; 
-    using USYM_MatrixX= typename Sparse_Matrix<double,N>::USYM_MatrixX; 
     // initialize A and b
-    USYM_Matrix A;
-    A << 1, 0, 0, 1, 0,
-         0, 1, 0, 1, 0,
-         0, 0, 1, 0, 0,
-         0, 0, 0, 1, 1,
-         0, 0, 0, 0, 1; 
-    USYM_Vector b; 
+    std::shared_ptr<T_Matrix> A(new T_Matrix(N,N));
+    (*A) << 1, 0, 0, 1, 0,
+            0, 1, 0, 1, 0,
+            0, 0, 1, 0, 0,
+            0, 0, 0, 1, 1,
+            0, 0, 0, 0, 1; 
+    T_Vector b(N); 
     b << 1, 2, 3, 4, 5; 
     // initialize solver with x0
-    auto sparse_matrix = std::make_shared<Sparse_Matrix<T,N>>(A); 
-    USYM_Linear_Solver<double,N> solver(sparse_matrix,b); 
-    USYM_Vector x0 = USYM_Vector::Zero(); 
+    USYM_Linear_Solver<T,T_Vector,T_Matrix> solver(A,b); 
+    T_Vector x0 = T_Vector::Zero(N); 
     solver.Initialize(x0); 
     for (int ii=0; ii<N; ++ii)
         solver.Step();
 }
 //##############################################################################
+void Test_LossOrthogonality(const int maxN)
+{
+    std::cout << "\n========== TEST: Loss Orthogonality ===========\n"; 
+    srand((unsigned int) time(0));
+    for (int ii=0; ii<10; ++ii)
+    {
+        std::string filename("data/test_loss_ortho_" 
+                             +std::to_string(ii)+".txt");
+        std::ofstream ofs(filename);
+        ofs << "N number_iterations residual\n";
+        for (int N=2; N<maxN; ++N)
+        {
+            const T res = Naive_Linear_Solve<Vector,Matrix>(N); 
+            ofs << N << " " << N << " " << res << std::endl;
+        }
+        ofs.close();
+    }
+}
+//##############################################################################
 int main() {
+    const int N = 150;
     Basics();
-    Tridiagonalization();
-    Naive_Linear_Solve();
-    Linear_Solve();
+    Tridiagonalization<Vector,Matrix>(N);
+    Naive_Linear_Solve<Vector,Matrix>(N);
+    Linear_Solve<Vector,Matrix>(5);
+
+    // more complicated tests
+    Test_LossOrthogonality(N);
 }
 //##############################################################################

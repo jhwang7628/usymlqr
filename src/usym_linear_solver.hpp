@@ -6,49 +6,56 @@
 //##############################################################################
 // Class USYM_Linear_Solver
 //##############################################################################
-template<typename T, int N>
+template<typename T, class T_Vector, class T_Matrix>
 class USYM_Linear_Solver
 {
-    using USYM_Vector       = typename Sparse_Matrix<T,N>::USYM_Vector;
-    using USYM_VectorX      = typename Sparse_Matrix<T,N>::USYM_VectorX;
-    using USYM_Matrix       = typename Sparse_Matrix<T,N>::USYM_Matrix; 
-    using USYM_MatrixX      = typename Sparse_Matrix<T,N>::USYM_MatrixX; 
-    using Sparse_Matrix_Ptr = typename USYM_Tridiag<T,N>::Sparse_Matrix_Ptr; 
-
-    Sparse_Matrix_Ptr _A; 
-    USYM_Vector       _b; 
-    std::unique_ptr<USYM_Tridiag<T,N>>  _tridiagonalization;
+    std::shared_ptr<T_Matrix> _A; 
+    T_Vector       _b; 
+    std::unique_ptr<USYM_Tridiag<T,T_Vector,T_Matrix>>  _tridiagonalization;
+    int _N;
 
     // actual storage for the solver: 
     // 4 generalized Lanczos vectors, 
     // 2 one for x and one for w 
     int _lanczos_rewrite_pointer = 0;
     int _step = 0; 
-    USYM_Vector _p[2]; 
-    USYM_Vector _q[2];
-    USYM_Vector _x; 
-    USYM_Vector _w;
-    USYM_Vector _betas;  
-    USYM_Vector _gammas; 
-    USYM_Vector _alphas; 
+    T_Vector _p[2]; 
+    T_Vector _q[2];
+    T_Vector _x; 
+    T_Vector _w;
+    T_Vector _betas;  
+    T_Vector _gammas; 
+    T_Vector _alphas; 
 
     // aux vecors, not strictly necessary but for convenience
     // notation following Saunders Eq 5.1 for matrix L
-    USYM_Vector _deltas; 
-    USYM_Vector _lambdas; 
-    USYM_Vector _epsilons; 
-    USYM_Vector _z; 
+    T_Vector _deltas; 
+    T_Vector _lambdas; 
+    T_Vector _epsilons; 
+    T_Vector _z; 
 
     bool _initialized = false; 
 public: 
     USYM_Linear_Solver() = default; 
-    USYM_Linear_Solver(std::shared_ptr<Sparse_Matrix<T,N>> A,
-                       const USYM_Vector &b)
+    USYM_Linear_Solver(std::shared_ptr<T_Matrix> A,
+                       const T_Vector &b)
         : _A(A),
           _b(b),
-          _tridiagonalization(new USYM_Tridiag<T,N>(_A))
+          _tridiagonalization(new USYM_Tridiag<T,T_Vector,T_Matrix>(_A)),
+          _N(b.size()),
+          _p{T_Vector(_N),T_Vector(_N)},
+          _q{T_Vector(_N),T_Vector(_N)},
+          _x(T_Vector(_N)),
+          _w(T_Vector(_N)),
+          _betas(T_Vector(_N)),
+          _gammas(T_Vector(_N)),
+          _alphas(T_Vector(_N)),
+          _deltas(T_Vector(_N)),
+          _lambdas(T_Vector(_N)),
+          _epsilons(T_Vector(_N)),
+          _z(T_Vector(_N))
     {}
-    USYM_Vector Initialize(const USYM_Vector &x0);
+    T_Vector Initialize(const T_Vector &x0);
     void Step();
     void ComputePlaneRotation(const T &a_11, const T &a_12,
                               T &c_11, T &c_12,
@@ -63,27 +70,27 @@ public:
 //##############################################################################
 // Function Initialize
 //##############################################################################
-template<typename T, int N> 
-typename USYM_Linear_Solver<T,N>::USYM_Vector USYM_Linear_Solver<T,N>::
-Initialize(const USYM_Vector &x0)
+template<typename T, class T_Vector, class T_Matrix>
+T_Vector USYM_Linear_Solver<T,T_Vector,T_Matrix>::
+Initialize(const T_Vector &x0)
 {
     assert(_A); 
 
     // p0, q0
-    USYM_Vector &pOld = _p[0]; 
-    USYM_Vector &qOld = _q[0]; 
-    pOld = USYM_Vector::Zero(); 
-    qOld = USYM_Vector::Zero(); 
+    T_Vector &pOld = _p[0]; 
+    T_Vector &qOld = _q[0]; 
+    pOld.setZero(); 
+    qOld.setZero(); 
 
     // p1, q1
-    USYM_Vector &pNow = _p[1]; 
-    USYM_Vector &qNow = _q[1]; 
+    T_Vector &pNow = _p[1]; 
+    T_Vector &qNow = _q[1]; 
 
-    USYM_Vector r0 = (_b - (*_A)*x0);
+    T_Vector r0 = (_b - (*_A)*x0);
     _betas(0) = r0.norm(); 
     pNow = r0 / _betas(0);
 
-    qNow = USYM_Vector::Random(); 
+    qNow = T_Vector::Random(_N); 
     _gammas(0) = qNow.norm(); 
     qNow /= _gammas(0); 
 
@@ -102,17 +109,17 @@ Initialize(const USYM_Vector &x0)
 //##############################################################################
 // Function Step
 //##############################################################################
-template<typename T, int N> 
-void USYM_Linear_Solver<T,N>::
+template<typename T, class T_Vector, class T_Matrix>
+void USYM_Linear_Solver<T,T_Vector,T_Matrix>::
 Step()
 {
     assert(_initialized && _tridiagonalization); 
-    if (_step >= N) // silently return
+    if (_step >= _N) // silently return
         return; 
-    USYM_Vector &pOld = _p[ _lanczos_rewrite_pointer     ]; 
-    USYM_Vector &qOld = _q[ _lanczos_rewrite_pointer     ]; 
-    USYM_Vector &pNow = _p[(_lanczos_rewrite_pointer+1)%2]; 
-    USYM_Vector &qNow = _q[(_lanczos_rewrite_pointer+1)%2]; 
+    T_Vector &pOld = _p[ _lanczos_rewrite_pointer     ]; 
+    T_Vector &qOld = _q[ _lanczos_rewrite_pointer     ]; 
+    T_Vector &pNow = _p[(_lanczos_rewrite_pointer+1)%2]; 
+    T_Vector &qNow = _q[(_lanczos_rewrite_pointer+1)%2]; 
 
     T tmp[2];  // beta, gamma
     bool done = true; 
@@ -121,7 +128,7 @@ Step()
                                                 pNow, qNow, 
                                                 _betas[_step], _gammas[_step], 
                                                 _alphas[_step], tmp[0], tmp[1]); 
-    if (!done && _step<N-1)
+    if (!done && _step<_N-1)
     {
         _betas[_step+1]  = tmp[0]; 
         _gammas[_step+1] = tmp[1];
@@ -151,7 +158,7 @@ Step()
     }
 
     // update x and w
-    const USYM_Vector &q_i = qNow; // just to make life easier with alias..
+    const T_Vector &q_i = qNow; // just to make life easier with alias..
     if (_step==0)
         _z(_step) = _betas(_step) / _deltas(_step); 
     else if (_step==1)
@@ -169,8 +176,8 @@ Step()
 //##############################################################################
 // Function ComputePlaneRotation
 //##############################################################################
-template<typename T, int N> 
-void USYM_Linear_Solver<T,N>::
+template<typename T, class T_Vector, class T_Matrix>
+void USYM_Linear_Solver<T,T_Vector,T_Matrix>::
 ComputePlaneRotation(const T &a_11, const T &a_12,
                      T &c_11, T &c_12,
                      T &c_21, T &c_22)
@@ -188,8 +195,8 @@ ComputePlaneRotation(const T &a_11, const T &a_12,
 //  [a_21, a_22],  *   [c_21, c_22]]
 //  [a_31, a_32]]
 //##############################################################################
-template<typename T, int N> 
-void USYM_Linear_Solver<T,N>::
+template<typename T, class T_Vector, class T_Matrix>
+void USYM_Linear_Solver<T,T_Vector,T_Matrix>::
 ApplyPlaneRotation(const T &c_11, const T &c_12, 
                    const T &c_21, const T &c_22, 
                          T &a_11,       T &a_12, 
