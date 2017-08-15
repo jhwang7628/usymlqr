@@ -24,16 +24,23 @@ private:
     // buffer
     USYM_Vector _u; 
     USYM_Vector _v; 
+    // initial vectors
+    USYM_Vector _b; 
+    USYM_Vector _c; 
 
 public:
     USYM_Tridiag() = default; 
     USYM_Tridiag(const Sparse_Matrix_Ptr &A)
         : _A(A)
-    {}
+    {
+        _b = USYM_Vector::Random(); 
+        _c = USYM_Vector::Random(); 
+    }
     void Set_A(const Sparse_Matrix_Ptr &A){_A = A;}
+    void Set_b(const USYM_Vector &b){_b = b;}
+    void Set_c(const USYM_Vector &c){_c = c;}
     // i=1 step needs special initialization
-    bool InitialStep(const USYM_Vector &b, const USYM_Vector &c,
-                     USYM_Vector &p_1, USYM_Vector &q_1, // output
+    bool InitialStep(USYM_Vector &p_1, USYM_Vector &q_1, // output
                      USYM_Vector &p_2, USYM_Vector &q_2, // output
                      T &alpha_1, T &beta_2, T &gamma_2
                     );
@@ -53,18 +60,17 @@ public:
 //##############################################################################
 template<typename T, int N> 
 bool USYM_Tridiag<T,N>::
-InitialStep(const USYM_Vector &b, const USYM_Vector &c,
-            USYM_Vector &p_1, USYM_Vector &q_1, // output
+InitialStep(USYM_Vector &p_1, USYM_Vector &q_1, // output
             USYM_Vector &p_2, USYM_Vector &q_2,
             T &alpha_1, T &beta_2, T &gamma_2
            )
 {
     USYM_Vector p_0 = USYM_Vector::Zero(); 
     USYM_Vector q_0 = USYM_Vector::Zero(); 
-    const T beta_1  = b.norm(); 
-    const T gamma_1 = c.norm(); 
-    p_1 = b/beta_1; 
-    q_1 = c/gamma_1;
+    const T beta_1  = _b.norm(); 
+    const T gamma_1 = _c.norm(); 
+    p_1 = _b/beta_1; 
+    q_1 = _c/gamma_1;
     // i=1 step
     return Step(p_0, q_0,
                 p_1, q_1, 
@@ -92,7 +98,7 @@ Step(const USYM_Vector &p_im1, const USYM_Vector &q_im1,
     _A->Premultiply_By_Matrix_Conjugate(p_i, _v); 
     _v -= (beta_i * q_im1); 
     // alpha = p_i^T u
-    alpha_i = p_i.transpose()*_u; 
+    alpha_i = p_i.dot(_u); 
     // continue..
     _u -= (alpha_i * p_i); 
     _v -= (alpha_i * q_i); 

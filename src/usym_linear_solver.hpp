@@ -37,6 +37,7 @@ class USYM_Linear_Solver
     USYM_Vector _deltas; 
     USYM_Vector _lambdas; 
     USYM_Vector _epsilons; 
+    USYM_Vector _z; 
 
     bool _initialized = false; 
 public: 
@@ -47,7 +48,7 @@ public:
           _b(b),
           _tridiagonalization(new USYM_Tridiag<T,N>(_A))
     {}
-    void Initialize(const USYM_Vector &x0);
+    USYM_Vector Initialize(const USYM_Vector &x0);
     void Step();
     void ComputePlaneRotation(const T &a_11, const T &a_12,
                               T &c_11, T &c_12,
@@ -63,7 +64,7 @@ public:
 // Function Initialize
 //##############################################################################
 template<typename T, int N> 
-void USYM_Linear_Solver<T,N>::
+typename USYM_Linear_Solver<T,N>::USYM_Vector USYM_Linear_Solver<T,N>::
 Initialize(const USYM_Vector &x0)
 {
     assert(_A); 
@@ -78,17 +79,24 @@ Initialize(const USYM_Vector &x0)
     USYM_Vector &pNow = _p[1]; 
     USYM_Vector &qNow = _q[1]; 
 
-    pNow = (_b - (*_A)*x0); 
-    _betas(0) = pNow.norm(); 
-    pNow /= _betas(0);
+    USYM_Vector r0 = (_b - (*_A)*x0);
+    _betas(0) = r0.norm(); 
+    pNow = r0 / _betas(0);
 
     qNow = USYM_Vector::Random(); 
     _gammas(0) = qNow.norm(); 
     qNow /= _gammas(0); 
 
+    // initialize x, w
+    _x = x0; 
+    _w.setZero(); 
+    _z.setZero(); 
+
     _lanczos_rewrite_pointer = 0; 
     _step = 0;
     _initialized = true; 
+
+    return r0; 
 }
 
 //##############################################################################
@@ -142,6 +150,18 @@ Step()
         PRINT(std::cout, upper_tmp); // should be close to zero
     }
 
+    // update x and w
+    const USYM_Vector &q_i = qNow; // just to make life easier with alias..
+    if (_step==0)
+        _z(_step) = _betas(_step) / _deltas(_step); 
+    else if (_step==1)
+        _z(_step) = - _lambdas(_step-1)*_z(_step-1) / _deltas(_step); 
+    else 
+        _z(_step) = -(_lambdas(_step-1)*_z(_step-1) 
+                    + _epsilons(_step-2)*_z(_step-2)) / _deltas(_step); 
+
+    // TODO here
+
     _lanczos_rewrite_pointer = (_lanczos_rewrite_pointer+1)%2; 
     ++_step; 
 }
@@ -160,6 +180,7 @@ ComputePlaneRotation(const T &a_11, const T &a_12,
     c_11 = cos(theta); c_12 = sin(theta); 
     c_21 =-sin(theta); c_22 = cos(theta); 
 }
+
 //##############################################################################
 // Function ApplyPlaneRotation
 //

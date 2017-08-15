@@ -11,8 +11,8 @@ class Sparse_Matrix
 {
 public: 
     using USYM_Vector = Eigen::Matrix<T,N,1>; 
-    using USYM_VectorX= Eigen::Matrix<T,Eigen::Dynamic,1>; 
     using USYM_Matrix = Eigen::Matrix<T,N,N>; 
+    using USYM_VectorX= Eigen::Matrix<T,Eigen::Dynamic,1>; 
     using USYM_MatrixX= Eigen::Matrix<T,N,Eigen::Dynamic>; 
 private: 
     USYM_Matrix _m; 

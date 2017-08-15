@@ -4,7 +4,7 @@
 CXX=g++
 CXX_FLAGS =-fPIC -std=c++14
 RELEASE_FLAG=-O3 -Wall -Wno-unused-local-typedefs
-DEBUG_FLAG=-g -Wall
+DEBUG_FLAG=-g -Wall -Wno-unused-local-typedefs
 DEFINES=
 LDFLAGS=
 ################################################################################
