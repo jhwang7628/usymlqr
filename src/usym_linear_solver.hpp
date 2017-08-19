@@ -27,7 +27,7 @@ class USYM_Linear_Solver
     T_Vector _w;
     Tridiagonal_Matrix<T> _matT; 
     Lower_Triangular_Matrix<T> _matL; 
-    T_Vector _z; 
+    std::vector<T> _z;  // need fast dynamic push_back and memory manage
 
     bool _initialized = false; 
 public: 
@@ -43,9 +43,10 @@ public:
           _x(T_Vector(_N)),
           _w(T_Vector(_N)),
           _matT(_N),
-          _matL(_N),
-          _z(T_Vector(_N))
-    {}
+          _matL(_N)
+    {
+        _z.reserve(_N); 
+    }
     T_Vector Initialize(const T_Vector &x0);
     void Step();
     void ComputePlaneRotation(const T &a_11, const T &a_12,
@@ -56,6 +57,8 @@ public:
                                   T &a_11,       T &a_12, 
                                   T &a_21,       T &a_22, 
                                   T &a_31,       T &a_32); // a_31 === 0 @ input
+    //// debug /////
+    void CheckError_z(); 
 }; 
 
 //##############################################################################
@@ -92,7 +95,6 @@ Initialize(const T_Vector &x0)
     // initialize x, w
     _x = x0; 
     _w.setZero(); 
-    _z.setZero(); 
 
     _lanczos_rewrite_pointer = 0; 
     _step = 0;
@@ -176,7 +178,24 @@ Step()
         _matL(i+1,i-1) = a31;  // write back
         std::cout << "L = \n";
         _matL.Print(i+2, i+1);
+
+        // solve for zeta_i by solving L_i z_i = beta_1 e_1
+        // and z_i = [z_im1^T ... zeta_i]^T
+        // this is the backsubstitution step using recursion
+        const T rhs = ((i==1) ? _matT.Get_Beta_1() : (T)0.0); 
+        T dotprod = 0.0; 
+        for (int j=i-1; (j-1)>=0 && (i-j)<=2; --j) // solve {i-1}x{i-1} system for i-step
+            dotprod += _z.at(j-1)*_matL(i-1, j-1); // 0-based
+        const T zeta_i = (rhs - dotprod) / _matL(i-1, i-1); 
+        _z.push_back(zeta_i); 
+        CheckError_z();
     }
+
+
+
+
+
+
 
     // update x and w
     //const T_Vector &q_i = qNow; // just to make life easier with alias..
@@ -237,5 +256,23 @@ ApplyPlaneRotation(const T &c_11, const T &c_12,
     std::swap(a_22, a_22_n); 
     std::swap(a_31, a_31_n); 
     std::swap(a_32, a_32_n); 
+}
+
+//##############################################################################
+// Function CheckError_z
+//##############################################################################
+template<typename T, class T_Vector, class T_Matrix>
+void USYM_Linear_Solver<T,T_Vector,T_Matrix>::
+CheckError_z()
+{
+    const int N = _z.size(); 
+    std::vector<T> beta(N, 0.0); 
+    for (int r=0; r<N; ++r)
+    for (int c=0; c<N; ++c)
+        beta.at(r) += _z.at(c)*_matL(r,c); 
+    beta.at(0) -= _matT.Get_Beta_1(); 
+    std::cout << "error for solving z = ";
+    std::copy(beta.begin(),beta.end(),std::ostream_iterator<T>(std::cout," ")); 
+    std::cout << std::endl;
 }
 #endif

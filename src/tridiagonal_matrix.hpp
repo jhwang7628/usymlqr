@@ -29,6 +29,7 @@ public:
         _gammas.reserve(N_hint);
         _alphas.reserve(N_hint);
     }
+    inline T Get_Beta_1() const {return _betas[0];}
     inline int AddAlpha(const T &alpha)
     {
         _alphas.push_back(alpha); return _alphas.size();
