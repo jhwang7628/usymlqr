@@ -4,7 +4,7 @@
 CXX=g++
 CXX_FLAGS =-fPIC -std=c++14
 RELEASE_FLAG=-O3 -Wall -Wno-unused-local-typedefs
-DEBUG_FLAG=-g -Wall -Wno-unused-local-typedefs
+DEBUG_FLAG=-g3 -Wall -Wno-unused-local-typedefs
 DEFINES=
 LDFLAGS=
 ################################################################################
@@ -29,7 +29,7 @@ INCLUDES+=-I$(EXT_DIR)/eigen # Eigen
 .PHONY: all
 all: directories release
 .PHONY: debug
-debug: CXX_FLAGS += $(DEBUG_FLAG)
+debug: CXX_FLAGS += $(DEBUG_FLAG) 
 debug: directories tests
 .PHONY: release
 release: CXX_FLAGS += $(RELEASE_FLAG)

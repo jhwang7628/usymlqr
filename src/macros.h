@@ -4,4 +4,5 @@
                                  __stream <<  __A << std::endl; 
 #define PRINT(__stream, __A) __stream << #__A << "="; \
                              __stream <<  __A << std::endl; 
+#define SMALL_NUM 1E-6
 #endif

@@ -130,5 +130,4 @@ StepInPlace(T_Vector &p_im1, T_Vector &q_im1,
     q_im1 = _v / gamma_ip1; 
     return false; 
 }
-
 #endif

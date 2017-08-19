@@ -3,6 +3,8 @@
 #include "macros.h"
 #include "sparse_matrix.hpp"
 #include "usym_tridiag.hpp"
+#include "tridiagonal_matrix.hpp"
+#include "lower_triangular_matrix.hpp"
 //##############################################################################
 // Class USYM_Linear_Solver
 //##############################################################################
@@ -23,15 +25,8 @@ class USYM_Linear_Solver
     T_Vector _q[2];
     T_Vector _x; 
     T_Vector _w;
-    T_Vector _betas;  
-    T_Vector _gammas; 
-    T_Vector _alphas; 
-
-    // aux vecors, not strictly necessary but for convenience
-    // notation following Saunders Eq 5.1 for matrix L
-    T_Vector _deltas; 
-    T_Vector _lambdas; 
-    T_Vector _epsilons; 
+    Tridiagonal_Matrix<T> _matT; 
+    Lower_Triangular_Matrix<T> _matL; 
     T_Vector _z; 
 
     bool _initialized = false; 
@@ -47,12 +42,8 @@ public:
           _q{T_Vector(_N),T_Vector(_N)},
           _x(T_Vector(_N)),
           _w(T_Vector(_N)),
-          _betas(T_Vector(_N)),
-          _gammas(T_Vector(_N)),
-          _alphas(T_Vector(_N)),
-          _deltas(T_Vector(_N)),
-          _lambdas(T_Vector(_N)),
-          _epsilons(T_Vector(_N)),
+          _matT(_N),
+          _matL(_N),
           _z(T_Vector(_N))
     {}
     T_Vector Initialize(const T_Vector &x0);
@@ -86,13 +77,17 @@ Initialize(const T_Vector &x0)
     T_Vector &pNow = _p[1]; 
     T_Vector &qNow = _q[1]; 
 
+    T beta_1, gamma_1; 
     T_Vector r0 = (_b - (*_A)*x0);
-    _betas(0) = r0.norm(); 
-    pNow = r0 / _betas(0);
+    beta_1 = r0.norm(); 
+    pNow = r0 / beta_1;
 
     qNow = T_Vector::Random(_N); 
-    _gammas(0) = qNow.norm(); 
-    qNow /= _gammas(0); 
+    gamma_1 = qNow.norm(); 
+    qNow /= gamma_1; 
+
+    int n = _matT.AddBetaAndGamma(beta_1,gamma_1); 
+    assert(n==1); 
 
     // initialize x, w
     _x = x0; 
@@ -113,59 +108,85 @@ template<typename T, class T_Vector, class T_Matrix>
 void USYM_Linear_Solver<T,T_Vector,T_Matrix>::
 Step()
 {
+    const int &i = _step; 
+    std::cout << "========== STEP " << i << " ========== " << std::endl;
     assert(_initialized && _tridiagonalization); 
-    if (_step >= _N) // silently return
-        return; 
     T_Vector &pOld = _p[ _lanczos_rewrite_pointer     ]; 
     T_Vector &qOld = _q[ _lanczos_rewrite_pointer     ]; 
     T_Vector &pNow = _p[(_lanczos_rewrite_pointer+1)%2]; 
     T_Vector &qNow = _q[(_lanczos_rewrite_pointer+1)%2]; 
 
-    T tmp[2];  // beta, gamma
-    bool done = true; 
-    if (_step > 0)
-        done = _tridiagonalization->StepInPlace(pOld, qOld,
-                                                pNow, qNow, 
-                                                _betas[_step], _gammas[_step], 
-                                                _alphas[_step], tmp[0], tmp[1]); 
-    if (!done && _step<_N-1)
+    std::cout << " step tridiagonalization\n";
+    const T beta_i  = _matT(i  , i-1); 
+    const T gamma_i = _matT(i-1, i  ); 
+    T alpha_i; // to be determined
+    T beta_ip1, gamma_ip1;  // beta, gamma
+    bool done = _tridiagonalization->StepInPlace(pOld, qOld,
+                                                 pNow, qNow, 
+                                                 beta_i, gamma_i, 
+                                                 alpha_i, beta_ip1, gamma_ip1); 
     {
-        _betas[_step+1]  = tmp[0]; 
-        _gammas[_step+1] = tmp[1];
+        const int n = _matT.AddAlpha(alpha_i); 
+        assert(n == i+1); 
     }
-    else
+    if (!done)
     {
-        done = true; 
+        const int n = _matT.AddBetaAndGamma(beta_ip1, gamma_ip1); 
+        assert(n == i+2); 
     }
 
-    // for step i, do plane rotation on step i-1
-    _deltas[_step] = _alphas[_step]; 
-    if (!done && _step>0)
+    // initialize matrix L in first two steps
+    if (i == 1) 
     {
-        _lambdas[_step] = _betas[_step+1]; 
-        _epsilons[_step] = 0.; 
-        T c[4]; // c_11, c_12, c_21, c_22
-        ComputePlaneRotation(_deltas[_step-1], _gammas[_step],
-                             c[0], c[1], 
-                             c[2], c[3]); 
-        T upper_tmp = _gammas[_step]; 
-        ApplyPlaneRotation(c[0], c[1],
-                           c[2], c[3], 
-                           _deltas[_step-1] , upper_tmp, 
-                           _lambdas[_step-1], _deltas[_step], 
-                           _epsilons[_step-1], _lambdas[_step]); 
-        PRINT(std::cout, upper_tmp); // should be close to zero
+        _matL.AddColumn((T)0., _matT(0,0), _matT(1,0), _matT(2,0));
+        _matL.AddColumn(_matT(0,1), _matT(1,1), _matT(2,1), (T)0.); 
+    } 
+    else if (i > 1 && !done)
+    {
+        _matL.AddColumn(_matT(i-1,i), _matT(i,i), _matT(i+1,i), (T)0.); 
+    }
+
+    // for step i, do plane rotation on (i-1,i-1), (i-1,i), (i,i-1), (i,i)
+    // so that element (i-1,i)=0
+    if (!done && i>0)
+    {
+        T &a11 = _matL(i-1,i-1); 
+        T &a12 = _matL(i-1,i  ); 
+        T &a21 = _matL(i  ,i-1); 
+        T &a22 = _matL(i  ,i  ); 
+        T  a31 = 0.0;  // software design..
+        T &a32 = _matL(i+1,i  ); 
+        assert(fabs(a31-0)<SMALL_NUM); // a31 should be zero before rotation
+
+        T c11, c12, c21, c22; 
+        std::cout << "T = \n";
+        _matT.Print(i+2, i+1); 
+        std::cout << "L = \n";
+        _matL.Print(i+2, i+1);
+        ComputePlaneRotation(a11, a12,
+                             c11, c12, 
+                             c21, c22); 
+        std::cout << " plane rotation\n";
+        ApplyPlaneRotation(c11, c12,
+                           c21, c22, 
+                           a11, a12,
+                           a21, a22,
+                           a31, a32); 
+        assert(fabs(a12-0)<SMALL_NUM); // a12 should be zero after rotation
+        _matL(i+1,i-1) = a31;  // write back
+        std::cout << "L = \n";
+        _matL.Print(i+2, i+1);
     }
 
     // update x and w
-    const T_Vector &q_i = qNow; // just to make life easier with alias..
-    if (_step==0)
-        _z(_step) = _betas(_step) / _deltas(_step); 
-    else if (_step==1)
-        _z(_step) = - _lambdas(_step-1)*_z(_step-1) / _deltas(_step); 
-    else 
-        _z(_step) = -(_lambdas(_step-1)*_z(_step-1) 
-                    + _epsilons(_step-2)*_z(_step-2)) / _deltas(_step); 
+    //const T_Vector &q_i = qNow; // just to make life easier with alias..
+    //if (_step==0)
+    //    _z(_step) = _betas(_step) / _deltas(_step); 
+    //else if (_step==1)
+    //    _z(_step) = - _lambdas(_step-1)*_z(_step-1) / _deltas(_step); 
+    //else 
+    //    _z(_step) = -(_lambdas(_step-1)*_z(_step-1) 
+    //                + _epsilons(_step-2)*_z(_step-2)) / _deltas(_step); 
 
     // TODO here
 
