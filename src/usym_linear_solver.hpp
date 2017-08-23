@@ -12,7 +12,7 @@ template<typename T, class T_Vector, class T_Matrix>
 class USYM_Linear_Solver
 {
     std::shared_ptr<T_Matrix> _A; 
-    T_Vector       _b; 
+    T_Vector                  _b; 
     std::unique_ptr<USYM_Tridiag<T,T_Vector,T_Matrix>>  _tridiagonalization;
     int _N;
 
@@ -21,12 +21,16 @@ class USYM_Linear_Solver
     // 2 one for x and one for w 
     int _lanczos_rewrite_pointer = 0;
     int _step = 0; 
-    T_Vector _p[2]; 
-    T_Vector _q[2];
+    T_Vector _p[3]; 
+    T_Vector _q[3];
     T_Vector _x; 
     T_Vector _w;
     Tridiagonal_Matrix<T> _matT; 
     Lower_Triangular_Matrix<T> _matL; 
+
+    // cache
+    T _rhs_1;  // one step ago
+    T _rhs_2;  // two step ago
     std::vector<T> _z;  // need fast dynamic push_back and memory manage
 
     bool _initialized = false; 
@@ -59,6 +63,7 @@ public:
                                   T &a_31,       T &a_32); // a_31 === 0 @ input
     //// debug /////
     void CheckError_z(); 
+    void CheckResidual(); 
 }; 
 
 //##############################################################################
@@ -94,9 +99,11 @@ Initialize(const T_Vector &x0)
 
     // initialize x, w
     _x = x0; 
-    _w.setZero(); 
+    _w = qNow; 
+    _rhs_1 = beta_1; 
+    _rhs_2 = 0.0;
 
-    _lanczos_rewrite_pointer = 0; 
+    _lanczos_rewrite_pointer = 2; 
     _step = 0;
     _initialized = true; 
 
@@ -113,20 +120,23 @@ Step()
     const int &i = _step; 
     std::cout << "========== STEP " << i << " ========== " << std::endl;
     assert(_initialized && _tridiagonalization); 
-    T_Vector &pOld = _p[ _lanczos_rewrite_pointer     ]; 
-    T_Vector &qOld = _q[ _lanczos_rewrite_pointer     ]; 
-    T_Vector &pNow = _p[(_lanczos_rewrite_pointer+1)%2]; 
-    T_Vector &qNow = _q[(_lanczos_rewrite_pointer+1)%2]; 
+    T_Vector &p_im1 = _p[(_lanczos_rewrite_pointer+1)%3]; 
+    T_Vector &q_im1 = _q[(_lanczos_rewrite_pointer+1)%3]; 
+    T_Vector &p_i   = _p[(_lanczos_rewrite_pointer+2)%3]; 
+    T_Vector &q_i   = _q[(_lanczos_rewrite_pointer+2)%3]; 
+    T_Vector &p_ip1 = _p[ _lanczos_rewrite_pointer]; 
+    T_Vector &q_ip1 = _q[ _lanczos_rewrite_pointer]; 
 
     std::cout << " step tridiagonalization\n";
     const T beta_i  = _matT(i  , i-1); 
     const T gamma_i = _matT(i-1, i  ); 
     T alpha_i; // to be determined
     T beta_ip1, gamma_ip1;  // beta, gamma
-    bool done = _tridiagonalization->StepInPlace(pOld, qOld,
-                                                 pNow, qNow, 
-                                                 beta_i, gamma_i, 
-                                                 alpha_i, beta_ip1, gamma_ip1); 
+    bool done = _tridiagonalization->Step(p_im1, q_im1,
+                                          p_i  , q_i  , 
+                                          beta_i, gamma_i, 
+                                          p_ip1, q_ip1,
+                                          alpha_i, beta_ip1, gamma_ip1); 
     {
         const int n = _matT.AddAlpha(alpha_i); 
         assert(n == i+1); 
@@ -161,14 +171,9 @@ Step()
         assert(fabs(a31-0)<SMALL_NUM); // a31 should be zero before rotation
 
         T c11, c12, c21, c22; 
-        std::cout << "T = \n";
-        _matT.Print(i+2, i+1); 
-        std::cout << "L = \n";
-        _matL.Print(i+2, i+1);
         ComputePlaneRotation(a11, a12,
                              c11, c12, 
                              c21, c22); 
-        std::cout << " plane rotation\n";
         ApplyPlaneRotation(c11, c12,
                            c21, c22, 
                            a11, a12,
@@ -176,40 +181,21 @@ Step()
                            a31, a32); 
         assert(fabs(a12-0)<SMALL_NUM); // a12 should be zero after rotation
         _matL(i+1,i-1) = a31;  // write back
-        std::cout << "L = \n";
-        _matL.Print(i+2, i+1);
 
-        // solve for zeta_i by solving L_i z_i = beta_1 e_1
-        // and z_i = [z_im1^T ... zeta_i]^T
-        // this is the backsubstitution step using recursion
-        const T rhs = ((i==1) ? _matT.Get_Beta_1() : (T)0.0); 
-        T dotprod = 0.0; 
-        for (int j=i-1; (j-1)>=0 && (i-j)<=2; --j) // solve {i-1}x{i-1} system for i-step
-            dotprod += _z.at(j-1)*_matL(i-1, j-1); // 0-based
-        const T zeta_i = (rhs - dotprod) / _matL(i-1, i-1); 
-        _z.push_back(zeta_i); 
-        CheckError_z();
+        const T z = _rhs_1 / _matL(i-1,i-1); 
+        const T s = z*c11; 
+        const T t = z*c21; 
+
+        _x += _w*s   + q_i*t  ; 
+        _w  = _w*c12 + q_i*c22; 
+        _rhs_1 = _rhs_2 - _matL(i  , i-1)*z; 
+        _rhs_2 =        - _matL(i+1, i-1)*z; 
+        _z.push_back(z); 
+
+        //CheckError_z();
+        CheckResidual(); 
     }
-
-
-
-
-
-
-
-    // update x and w
-    //const T_Vector &q_i = qNow; // just to make life easier with alias..
-    //if (_step==0)
-    //    _z(_step) = _betas(_step) / _deltas(_step); 
-    //else if (_step==1)
-    //    _z(_step) = - _lambdas(_step-1)*_z(_step-1) / _deltas(_step); 
-    //else 
-    //    _z(_step) = -(_lambdas(_step-1)*_z(_step-1) 
-    //                + _epsilons(_step-2)*_z(_step-2)) / _deltas(_step); 
-
-    // TODO here
-
-    _lanczos_rewrite_pointer = (_lanczos_rewrite_pointer+1)%2; 
+    _lanczos_rewrite_pointer = (_lanczos_rewrite_pointer+1)%3; 
     ++_step; 
 }
 
@@ -274,5 +260,30 @@ CheckError_z()
     std::cout << "error for solving z = ";
     std::copy(beta.begin(),beta.end(),std::ostream_iterator<T>(std::cout," ")); 
     std::cout << std::endl;
+}
+
+//##############################################################################
+// Function CheckResidual
+//##############################################################################
+template<typename T, class T_Vector, class T_Matrix>
+void USYM_Linear_Solver<T,T_Vector,T_Matrix>::
+CheckResidual()
+{
+    T_Vector r = (*_A)*_x - _b; 
+    const int N = _b.size(); 
+    const T_Vector xstar = _A->fullPivLu().solve(_b); 
+    std::cout << "X^*  = ";
+    for (int ii=0; ii<N; ++ii)
+        printf("% 8.4f ", xstar[ii]); 
+    std::cout << std::endl; 
+    std::cout << "X_cg = ";
+    for (int ii=0; ii<N; ++ii)
+        printf("% 8.4f ", _x[ii]); 
+    std::cout << std::endl; 
+    std::cout << "Res  = ";
+    for (int ii=0; ii<N; ++ii)
+        printf("% 8.4f ", r[ii]); 
+    std::cout << std::endl; 
+    std::cout << "||Res|| = " << r.norm() << std::endl;
 }
 #endif

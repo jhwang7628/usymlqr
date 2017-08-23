@@ -202,11 +202,11 @@ void Test_LossOrthogonality(const int maxN)
 }
 //##############################################################################
 int main() {
-    const int N = 6;
+    const int N = 500;
     //Basics();
     //Tridiagonalization<Vector,Matrix>(N);
     //Naive_Linear_Solve<Vector,Matrix>(N);
-    Linear_Solve<Vector,Matrix>(N, N);
+    Linear_Solve<Vector,Matrix>(N, 10*N);
 
     // more complicated tests
     //Test_LossOrthogonality(N);
