@@ -176,10 +176,10 @@ void Linear_Solve(const int N, const int maxStep)
     // initialize solver with x0
     USYM_Linear_Solver<T,T_Vector,T_Matrix> solver(A,b); 
     solver.Initialize(x0); 
-    PRINT_MAT(std::cout, (*A)); 
-    PRINT_MAT(std::cout, (b)); 
-    for (int ii=0; ii<maxStep; ++ii)
-        solver.Step();
+    T_Vector x; 
+    T rnorm; 
+    solver.SetMaxIteration(100*N);
+    solver.Solve(x, rnorm); 
 }
 //##############################################################################
 void Test_LossOrthogonality(const int maxN)
@@ -202,7 +202,7 @@ void Test_LossOrthogonality(const int maxN)
 }
 //##############################################################################
 int main() {
-    const int N = 500;
+    const int N = 100;
     //Basics();
     //Tridiagonalization<Vector,Matrix>(N);
     //Naive_Linear_Solve<Vector,Matrix>(N);
