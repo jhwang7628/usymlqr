@@ -185,14 +185,9 @@ Step()
                                           beta_i, gamma_i, 
                                           p_ip1, q_ip1,
                                           alpha_i, beta_ip1, gamma_ip1); 
-    {
-        const int n = _matT.AddAlpha(alpha_i); 
-        assert(n == i+1); 
-    }
-    {
-        const int n = _matT.AddBetaAndGamma(beta_ip1, gamma_ip1); 
-        assert(n == i+2); 
-    }
+    int ntest;
+    ntest = _matT.AddAlpha(alpha_i); assert(ntest == i+1); 
+    ntest = _matT.AddBetaAndGamma(beta_ip1, gamma_ip1); assert(ntest == i+2); 
 
     // initialize matrix L in first two steps
     if (i == 1) 
@@ -207,7 +202,7 @@ Step()
 
     // for step i, do plane rotation on (i-1,i-1), (i-1,i), (i,i-1), (i,i)
     // so that element (i-1,i)=0
-    if (i>0)
+    if (i > 0)
     {
         T &a11 = _matL(i-1,i-1); 
         T &a12 = _matL(i-1,i  ); 

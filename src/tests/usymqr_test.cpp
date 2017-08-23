@@ -201,8 +201,13 @@ void Test_LossOrthogonality(const int maxN)
     }
 }
 //##############################################################################
-int main() {
-    const int N = 100;
+int main(int argc, char **argv) {
+    if (argc != 2) 
+    {
+        std::cerr << "**Usage: " << argv[0] << " <N>\n";
+        exit(1); 
+    }
+    const int N = atoi(argv[1]);
     //Basics();
     //Tridiagonalization<Vector,Matrix>(N);
     //Naive_Linear_Solve<Vector,Matrix>(N);
