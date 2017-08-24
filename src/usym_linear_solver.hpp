@@ -151,8 +151,6 @@ Solve(T_Vector &x, T&rnorm)
     int flag = 0;
     while (flag == 0)
         flag = Step(); 
-    std::cout << "stop flag = " << flag << std::endl;
-    CheckResidual();
     x = _x; 
     rnorm = _rnorm; 
     return flag; 
@@ -167,7 +165,7 @@ Step()
 {
     const int &i = _step; 
     int flag = 0;
-    std::cout << "========== STEP " << i << " ========== " << std::endl;
+    std::cout << "STEP " << i;
     assert(_initialized && _tridiagonalization); 
     T_Vector &p_im1 = _p[(_lanczos_rewrite_pointer+1)%3]; 
     T_Vector &q_im1 = _q[(_lanczos_rewrite_pointer+1)%3]; 
@@ -253,6 +251,7 @@ Step()
         //CheckError_z();
         //CheckResidual(); 
     }
+    std::cout << "   norm(r_cg) = " << _cgnorm << std::endl;
     _lanczos_rewrite_pointer = (_lanczos_rewrite_pointer+1)%3; 
     if (_step++ >= _maxItn) flag = 7; 
     if (flag != 0) 
