@@ -31,4 +31,4 @@ TestProgram: ${files}
 	${FC} ${FFLAGS} -o $@ ${files}
 
 clean:
-	\rm -f *.o *.mod
+	\rm -rf *.o *.mod TestProgram TestProgram.dSYM USYMLQ.txt
