@@ -178,6 +178,7 @@ void Linear_Solve(const int N, const int maxStep)
     solver.Initialize(x0); 
     T_Vector x; 
     T rnorm; 
+    solver.Set_Mode(USYMQR);
     solver.SetMaxIteration(100*N);
     solver.Solve(x, rnorm); 
 }
