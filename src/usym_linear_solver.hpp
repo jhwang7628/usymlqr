@@ -70,6 +70,7 @@ class USYM_Linear_Solver
     T _q2; 
     T _oc; 
 
+    bool _forceStop = false; 
     bool _initialized = false; 
 
 public: 
@@ -175,6 +176,7 @@ Initialize(const T_Vector &x0)
     _lanczos_rewrite_pointer = 2; 
     _step = 0;
     _initialized = true; 
+    _forceStop = false; 
 
     return r0; 
 }
@@ -332,9 +334,17 @@ Step()
         _oc = _c; 
 
         if (_Arnorm/(_Anorm*_rnorm) < _a_tol) flag = 2;
-        if (flag > 0) return flag;
-        if (_rnorm < _a_tol*_Anorm + _b_tol)  flag = 1;  // TODO
-        PRINT(std::cout, _rnorm); 
+        if (_rnorm < _a_tol*_Anorm + _b_tol)
+        {
+            flag = 1;
+            if (!_forceStop)
+            {
+                _lanczos_rewrite_pointer = (_lanczos_rewrite_pointer+1)%3; 
+                _step++;
+                _forceStop = true; 
+                Step();  // get correct norm(A^T(Ax-b)) estimate
+            }
+        }
     }
 
     _lanczos_rewrite_pointer = (_lanczos_rewrite_pointer+1)%3; 
