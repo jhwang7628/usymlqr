@@ -165,13 +165,13 @@ T Naive_Linear_Solve(const int N)
 }
 //##############################################################################
 template<class T_Vector, class T_Matrix>
-void Linear_Solve(const int N, const int maxStep)
+void Linear_Solve(const int M, const int N, const int maxStep)
 {
     std::cout << "\n========== Linear Solve ===========\n"; 
     // initialize A and b
-    std::shared_ptr<T_Matrix> A(new T_Matrix(N,N));
-    (*A) = T_Matrix::Random(N,N); 
-    const T_Vector b = T_Vector::Random(N); 
+    std::shared_ptr<T_Matrix> A(new T_Matrix);
+    (*A) = T_Matrix::Random(M,N); 
+    const T_Vector b = T_Vector::Random(M); 
     const T_Vector x0 = T_Vector::Zero(N); 
     // initialize solver with x0
     USYM_Linear_Solver<T,T_Vector,T_Matrix> solver(A,b); 
@@ -179,8 +179,10 @@ void Linear_Solve(const int N, const int maxStep)
     T_Vector x; 
     T rnorm; 
     solver.Set_Mode(USYMQR);
-    solver.SetMaxIteration(100*N);
-    solver.Solve(x, rnorm); 
+    solver.SetMaxIteration(maxStep);
+    const int flag = solver.Solve(x, rnorm); 
+    solver.CheckResidual();
+    PRINT(std::cout, flag);
 }
 //##############################################################################
 void Test_LossOrthogonality(const int maxN)
@@ -203,16 +205,17 @@ void Test_LossOrthogonality(const int maxN)
 }
 //##############################################################################
 int main(int argc, char **argv) {
-    if (argc != 2) 
+    if (argc != 3) 
     {
-        std::cerr << "**Usage: " << argv[0] << " <N>\n";
+        std::cerr << "**Usage: " << argv[0] << " <M> <N>\n";
         exit(1); 
     }
-    const int N = atoi(argv[1]);
+    const int M = atoi(argv[1]);
+    const int N = atoi(argv[2]);
     //Basics();
     //Tridiagonalization<Vector,Matrix>(N);
     //Naive_Linear_Solve<Vector,Matrix>(N);
-    Linear_Solve<Vector,Matrix>(N, 10*N);
+    Linear_Solve<Vector,Matrix>(M, N, 100*std::max(M,N));
 
     // more complicated tests
     //Test_LossOrthogonality(N);

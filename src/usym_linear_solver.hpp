@@ -19,6 +19,7 @@ class USYM_Linear_Solver
     std::shared_ptr<T_Matrix> _A; 
     T_Vector                  _b; 
     std::unique_ptr<USYM_Tridiag<T,T_Vector,T_Matrix>>  _tridiagonalization;
+    int _M;
     int _N;
 
     // solver config
@@ -83,19 +84,20 @@ public:
         : _A(A),
           _b(b),
           _tridiagonalization(new USYM_Tridiag<T,T_Vector,T_Matrix>(_A)),
-          _N(b.size()),
-          _maxItn(_N),
+          _M(A->rows()),
+          _N(A->cols()),
+          _maxItn(std::min(_M,_N)),
           _a_tol(DEFAULT_TOL),
           _b_tol(DEFAULT_TOL),
-          _p{T_Vector(_N),T_Vector(_N)},
+          _p{T_Vector(_M),T_Vector(_M)},
           _q{T_Vector(_N),T_Vector(_N)},
           _x(T_Vector(_N)),
           _w(T_Vector(_N)),
           _m{T_Vector(_N),T_Vector(_N),T_Vector(_N)},
-          _matT(_N),
-          _matL(_N)
+          _matT(std::max(_M,_N)),
+          _matL(std::max(_M,_N))
     {
-        _z.reserve(_N); 
+        _z.reserve(std::max(_M,_N)); 
     }
     inline void SetMaxIteration(const int maxN) 
         {_maxItn = maxN;}
@@ -103,6 +105,10 @@ public:
         {_a_tol = atol; _b_tol = btol;}
     T_Vector Initialize(const T_Vector &x0);
     int Solve(T_Vector &x, T &rnorm); 
+    
+    //// debug /////
+    void CheckError_z(); 
+    void CheckResidual(); 
 
 private: 
     int Step();
@@ -114,9 +120,6 @@ private:
                                   T &a_11,       T &a_12, 
                                   T &a_21,       T &a_22, 
                                   T &a_31,       T &a_32); // a_31 === 0 @ input
-    //// debug /////
-    void CheckError_z(); 
-    void CheckResidual(); 
 }; 
 
 //##############################################################################
@@ -345,6 +348,7 @@ Step()
                 Step();  // get correct norm(A^T(Ax-b)) estimate
             }
         }
+        PRINT(std::cout, _rnorm);
     }
 
     _lanczos_rewrite_pointer = (_lanczos_rewrite_pointer+1)%3; 
@@ -427,21 +431,26 @@ template<typename T, class T_Vector, class T_Matrix>
 void USYM_Linear_Solver<T,T_Vector,T_Matrix>::
 CheckResidual()
 {
-    T_Vector r = (*_A)*_x - _b; 
-    const int N = _b.size(); 
-    const T_Vector xstar = _A->fullPivLu().solve(_b); 
+    const T_Vector r     = (*_A)*_x     - _b; 
+    const T_Vector xstar = _A->fullPivHouseholderQr().solve(_b); 
+    const T_Vector rstar = (*_A)* xstar - _b; 
+
     std::cout << "X^*  = ";
-    for (int ii=0; ii<N; ++ii)
+    for (int ii=0; ii<_N; ++ii)
         printf("% 8.4f ", xstar[ii]); 
     std::cout << std::endl; 
+
     std::cout << "X_cg = ";
-    for (int ii=0; ii<N; ++ii)
+    for (int ii=0; ii<_N; ++ii)
         printf("% 8.4f ", _x[ii]); 
     std::cout << std::endl; 
+
     std::cout << "Res  = ";
-    for (int ii=0; ii<N; ++ii)
+    for (int ii=0; ii<_M; ++ii)
         printf("% 8.4f ", r[ii]); 
     std::cout << std::endl; 
-    std::cout << "||Res|| = " << r.norm() << std::endl;
+
+    std::cout << "norm(r    ) = " << r.norm()     << std::endl;
+    std::cout << "norm(rstar) = " << rstar.norm() << std::endl;
 }
 #endif

@@ -13,21 +13,26 @@ template<typename T, class T_Vector, class T_Matrix>
 class USYM_Tridiag
 {
 private: 
-    std::shared_ptr<T_Matrix> _A; 
+    std::shared_ptr<T_Matrix> _A ; 
+    std::shared_ptr<T_Matrix> _AT;  // cache A transpose
     // buffer
     T_Vector _u; 
     T_Vector _v; 
     // initial vectors
     T_Vector _b; 
     T_Vector _c; 
+    int _M; 
+    int _N; 
 
 public:
     USYM_Tridiag() = default; 
     USYM_Tridiag(const std::shared_ptr<T_Matrix> &A)
-        : _A(A), _u(A->rows()), _v(A->rows())
+        : _A(A), _M(A->rows()), _N(A->cols())
     {
-        _b = T_Vector::Random(A->rows()); 
-        _c = T_Vector::Random(A->rows()); 
+        _AT = std::make_shared<T_Matrix>(); 
+        (*_AT) = _A->transpose(); 
+        _b = T_Vector::Random(_M); 
+        _c = T_Vector::Random(_N); 
     }
     void Set_A(const std::shared_ptr<T_Matrix> &A){_A = A;}
     void Set_b(const T_Vector &b){_b = b;}
@@ -58,8 +63,8 @@ InitialStep(T_Vector &p_1, T_Vector &q_1, // output
             T &alpha_1, T &beta_2, T &gamma_2
            )
 {
-    T_Vector p_0 = T_Vector::Zero(_A->rows()); 
-    T_Vector q_0 = T_Vector::Zero(_A->rows()); 
+    T_Vector p_0 = T_Vector::Zero(_M); 
+    T_Vector q_0 = T_Vector::Zero(_N); 
     const T beta_1  = _b.norm(); 
     const T gamma_1 = _c.norm(); 
     p_1 = _b/beta_1; 
@@ -85,9 +90,9 @@ Step(const T_Vector &p_im1, const T_Vector &q_im1,
 {
     assert(_A); 
     // u = A q_i - gamma_i p_{i-1}
-    _u = (*_A)*q_i - gamma_i*p_im1; 
+    _u = (*_A )*q_i - gamma_i*p_im1; 
     // v = A^* p_i - beta_i q_{i-1}
-    _v = _A->transpose()*p_i - beta_i*q_im1; 
+    _v = (*_AT)*p_i - beta_i*q_im1; 
     // alpha = p_i^T u
     alpha_i = p_i.dot(_u); 
     // continue..
@@ -114,9 +119,9 @@ StepInPlace(T_Vector &p_im1, T_Vector &q_im1,
 {
     assert(_A); 
     // u = A q_i - gamma_i p_{i-1}
-    _u = (*_A)*q_i - gamma_i*p_im1; 
+    _u = (*_A )*q_i - gamma_i*p_im1; 
     // v = A^* p_i - beta_i q_{i-1}
-    _v = _A->transpose()*p_i - beta_i*q_im1; 
+    _v = (*_AT)*p_i - beta_i*q_im1; 
     // alpha = p_i^T u
     alpha_i = p_i.dot(_u); 
     // continue..
