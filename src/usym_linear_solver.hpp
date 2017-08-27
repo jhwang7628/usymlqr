@@ -26,6 +26,7 @@ class USYM_Linear_Solver
     int _maxItn;
     T _a_tol; 
     T _b_tol; 
+    int _verbose = 0; 
 
     // actual storage for the solver: 
     // 4 generalized Lanczos vectors, 
@@ -52,6 +53,8 @@ class USYM_Linear_Solver
     T _rnorm; 
     T _eta; 
     T _cgnorm;
+    T _t_rel; 
+    T _t_tol;
     std::vector<T> _z;  // need fast dynamic push_back and memory manage
 
     // cache for USYMQR
@@ -71,12 +74,21 @@ class USYM_Linear_Solver
     T _q2; 
     T _oc; 
 
+    // logging
+    std::ostream *_logging = nullptr; 
+    char _buf[1024];
+
     bool _forceStop = false; 
     bool _initialized = false; 
 
 public: 
     Mode mode = USYMLQ; 
-    inline void Set_Mode(const Mode &m){mode = m;}
+    inline void Set_Mode(const Mode &m)
+    {mode = m;}
+    inline void Set_Verbose_Level(const unsigned int v)
+    {assert(v<=MAX_VERBOSE_LEVEL); _verbose = v;} 
+    inline void Set_Logging(std::ostream *os)
+    {_logging = os;}
     
     USYM_Linear_Solver() = default; 
     USYM_Linear_Solver(std::shared_ptr<T_Matrix> A,
@@ -95,16 +107,24 @@ public:
           _w(T_Vector(_N)),
           _m{T_Vector(_N),T_Vector(_N),T_Vector(_N)},
           _matT(std::max(_M,_N)),
-          _matL(std::max(_M,_N))
+          _matL(std::max(_M,_N)), 
+          _logging(&(std::cout))
     {
         _z.reserve(std::max(_M,_N)); 
     }
     inline void SetMaxIteration(const int maxN) 
         {_maxItn = maxN;}
-    inline void SetTol(const T atol, const T btol)
+    inline void Set_Tol(const T atol, const T btol)
         {_a_tol = atol; _b_tol = btol;}
     T_Vector Initialize(const T_Vector &x0);
     int Solve(T_Vector &x, T &rnorm); 
+
+    // logging
+    void Log_Header(); 
+    void Log_Solve_Start(); 
+    void Log_Solve_Step();
+    void Log_Solve_End(); 
+    void Log_Footer(const int flag); 
     
     //// debug /////
     void CheckError_z(); 
@@ -192,12 +212,126 @@ int USYM_Linear_Solver<T,T_Vector,T_Matrix>::
 Solve(T_Vector &x, T&rnorm)
 {
     assert(_initialized); 
+    Log_Header(); 
+    Log_Solve_Start(); 
     int flag = 0;
     while(flag == 0)
         flag = Step();
     x = _x; 
     rnorm = _rnorm; 
+    Log_Solve_End(); 
+    Log_Footer(flag); 
     return flag; 
+}
+
+//##############################################################################
+// Function Log_Solve_Header
+//##############################################################################
+template<typename T, class T_Vector, class T_Matrix>
+void USYM_Linear_Solver<T,T_Vector,T_Matrix>::
+Log_Header()
+{
+    if (_verbose == 0) return; 
+    (*_logging) << "\n\n" << 
+    "============================================================\n"    <<
+    "  Solver Header: \n"                                             << 
+    "    solver type  : " << (mode==USYMLQ ? "USYMLQ" : "USYMQR") << "\n" << 
+    "    max iteration: " << _maxItn << "\n" <<
+    "    a_tol        : " << _a_tol << "\n" << 
+    "    b_tol        : " << _b_tol << "\n" << 
+    "    verbose level: " << _verbose << "\n" <<
+    "    matrix size  : " << _M << "-by-" << _N << "\n" << 
+    "============================================================\n"; 
+}
+
+//##############################################################################
+// Function Log_Solve_Start
+//##############################################################################
+template<typename T, class T_Vector, class T_Matrix>
+void USYM_Linear_Solver<T,T_Vector,T_Matrix>::
+Log_Solve_Start()
+{
+    if (_verbose == 0) return; 
+    (*_logging) << "\n\n"
+    "============================================================\n" <<
+    "                        Solver START                        \n" << 
+    "============================================================\n"; 
+
+    if (_verbose == 1) 
+        snprintf(_buf, 1024, "Itn\n");
+    else if (_verbose == 2) 
+        snprintf(_buf, 1024, 
+                 "%5s   %15s   %15s   %15s   %15s   %15s\n", 
+                 "Itn", "x(1)", "norm(r)", "norm(A)", "relTol", "norm(r)/norm(b)");
+    (*_logging) << _buf; 
+}
+
+//##############################################################################
+// Function Log_Solve_Step
+//##############################################################################
+template<typename T, class T_Vector, class T_Matrix>
+void USYM_Linear_Solver<T,T_Vector,T_Matrix>::
+Log_Solve_Step()
+{
+    if (_verbose == 0) return; 
+    else if (_verbose == 1) 
+        snprintf(_buf, 1024, "%5d\n", _step);
+    else if (_verbose == 2) 
+        snprintf(_buf, 1024, 
+                 "%5d   % 10.8e   % 10.8e   % 10.8e   % 10.8e   % 10.8e\n", 
+                 _step, _x(0),    _rnorm,   _Anorm,   _t_tol,   _t_rel); 
+    (*_logging) << _buf;
+}
+
+//##############################################################################
+// Function Log_Solve_End
+//##############################################################################
+template<typename T, class T_Vector, class T_Matrix>
+void USYM_Linear_Solver<T,T_Vector,T_Matrix>::
+Log_Solve_End()
+{
+    if (_verbose == 0) return; 
+    (*_logging) << 
+    "============================================================\n" <<
+    "                        Solver END                          \n" << 
+    "============================================================\n"; 
+}
+
+//##############################################################################
+// Function Log_Solve_Footer
+//##############################################################################
+template<typename T, class T_Vector, class T_Matrix>
+void USYM_Linear_Solver<T,T_Vector,T_Matrix>::
+Log_Footer(const int flag)
+{
+    if (_verbose == 0) return; 
+    const T_Vector r     = (*_A)*_x     - _b; 
+    const T_Vector xstar = _A->fullPivHouseholderQr().solve(_b); 
+    const T_Vector rstar = (*_A)* xstar - _b; 
+    (*_logging) << "\n\n" << 
+    "============================================================\n" <<
+    "  Solver Footer: \n"                                            << 
+    "    stop flag  : " << flag << "\n"                              << 
+    "    norm(r    ): " << r.norm() << "\n"                          <<
+    "    norm(rstar): " << rstar.norm()  << "\n"                     <<
+    "============================================================\n" <<
+    "  Stop flag   Reason for termination\n"                         << 
+    "                                                            \n" <<
+    "    0         x = 0 is the exact solution.                  \n" <<
+    "              No iterations were performed                  \n" <<
+    "                                                            \n" <<
+    "    1         norm(Ax - b) is sufficiently small,           \n" <<
+    "              given the values of a_tol and b_tol.          \n" <<
+    "                                                            \n" <<
+    "    2         norm(A'(Ax - b() is sufficiently small,       \n" <<
+    "              given the values of a_tol and b_tol.          \n" <<
+    "                                                            \n" <<
+    "    4         norm(Ax - b) is as small as seems reasonable. \n" <<
+    "                                                            \n" <<
+    "    7         The iteration limit maxItn was reached.       \n" <<
+    "                                                            \n" <<
+    "   11         The system Ax = b appears to be incompatible. \n" <<
+    "============================================================\n";
 }
 
 //##############################################################################
@@ -232,7 +366,6 @@ Step()
 
     if (mode == USYMLQ)
     {
-        std::cout << "USYMLQ STEP " << i << std::endl;
         // initialize matrix L in first two steps
         if (i == 1) 
         {
@@ -278,9 +411,9 @@ Step()
             _rhs_2 =        - _matL(i+1, i-1)*z; 
             _z.push_back(z); 
 
-            _zbar = _rhs_1 / _matL(i,i); // estimate of z_i
-            _eta  = c21*z + c22*_zbar;    // last element of h_j
-            _cgnorm = _matT(i+1,i) * fabs(_eta); 
+            _zbar  = _rhs_1 / _matL(i,i); // estimate of z_i
+            _eta   = c21*z + c22*_zbar;    // last element of h_j
+            _rnorm = _matT(i+1,i) * fabs(_eta); 
             _Anorm2 += pow(_matT(i  ,i  ),2) 
                      + pow(_matT(i  ,i+1),2)
                      + pow(_matT(i+1,i  ),2); 
@@ -288,17 +421,16 @@ Step()
             _xnorm = sqrt(_xnorm2 + pow(_zbar,2)); 
             _xnorm2 += pow(z,2); 
 
-            const T t_rel = _cgnorm / _bnorm; 
-            const T t_tol = _b_tol + _a_tol*_Anorm*_xnorm/_bnorm; 
-            const T t1    = 1.0 + t_rel / (1.0 + _Anorm*_xnorm/_bnorm);
-            if      (t_rel < t_tol) flag = 1; 
+            _t_rel = _rnorm / _bnorm; 
+            _t_tol = _b_tol + _a_tol*_Anorm*_xnorm/_bnorm; 
+            const T t1    = 1.0 + _t_rel / (1.0 + _Anorm*_xnorm/_bnorm);
+            if      (_t_rel < _t_tol) flag = 1; 
             else if (t1 <= 1.0)     flag = 4; 
             //CheckError_z();
         }
     }
     else if (mode == USYMQR)
     {
-        std::cout << "USYMQR STEP " << i << std::endl; 
         _otau = _taau; 
 
         _sigm =  _c*_sbar + _s*_matT(i  ,i  ); 
@@ -348,8 +480,9 @@ Step()
                 Step();  // get correct norm(A^T(Ax-b)) estimate
             }
         }
-        PRINT(std::cout, _rnorm);
     }
+    if (_rnorm > 1./SMALL_NUM) flag = 11; 
+    Log_Solve_Step(); 
 
     _lanczos_rewrite_pointer = (_lanczos_rewrite_pointer+1)%3; 
     if (_step++ >= _maxItn) flag = 7; 
@@ -419,9 +552,9 @@ CheckError_z()
     for (int c=0; c<N; ++c)
         beta.at(r) += _z.at(c)*_matL(r,c); 
     beta.at(0) -= _matT.Get_Beta_1(); 
-    std::cout << "error for solving z = ";
-    std::copy(beta.begin(),beta.end(),std::ostream_iterator<T>(std::cout," ")); 
-    std::cout << std::endl;
+    (*_logging) << "error for solving z = ";
+    std::copy(beta.begin(),beta.end(),std::ostream_iterator<T>((*_logging)," ")); 
+    (*_logging) << std::endl;
 }
 
 //##############################################################################
@@ -434,23 +567,27 @@ CheckResidual()
     const T_Vector r     = (*_A)*_x     - _b; 
     const T_Vector xstar = _A->fullPivHouseholderQr().solve(_b); 
     const T_Vector rstar = (*_A)* xstar - _b; 
+    char buf[512];
 
-    std::cout << "X^*  = ";
     for (int ii=0; ii<_N; ++ii)
-        printf("% 8.4f ", xstar[ii]); 
-    std::cout << std::endl; 
+        snprintf(buf, 512, "% 8.4f ", xstar[ii]); 
+    (*_logging) << "X^*  = ";
+    (*_logging) << buf;
+    (*_logging) << std::endl; 
 
-    std::cout << "X_cg = ";
     for (int ii=0; ii<_N; ++ii)
-        printf("% 8.4f ", _x[ii]); 
-    std::cout << std::endl; 
+        snprintf(buf, 512, "% 8.4f ", _x[ii]); 
+    (*_logging) << "X_cg = ";
+    (*_logging) << buf;
+    (*_logging) << std::endl; 
 
-    std::cout << "Res  = ";
     for (int ii=0; ii<_M; ++ii)
-        printf("% 8.4f ", r[ii]); 
-    std::cout << std::endl; 
+        snprintf(buf, 512, "% 8.4f ", r[ii]); 
+    (*_logging) << "Res  = ";
+    (*_logging) << buf;
+    (*_logging) << std::endl; 
 
-    std::cout << "norm(r    ) = " << r.norm()     << std::endl;
-    std::cout << "norm(rstar) = " << rstar.norm() << std::endl;
+    (*_logging) << "norm(r    ) = " << r.norm()     << std::endl;
+    (*_logging) << "norm(rstar) = " << rstar.norm() << std::endl;
 }
 #endif

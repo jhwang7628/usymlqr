@@ -53,8 +53,12 @@ $(OBJ_FILES): $(CPP_FILES)
 ## INDIVIDUAL TESTS
 ################################################################################
 tests: \
-	usymqr_test
+	usymqr_test \
+	random_matrices_test
 usymqr_test: $(LIB) $(BIN_DIR)
+	$(CXX) $(CXX_FLAGS) $(DEFINES) $(INCLUDES) $(TESTS_DIR)/$@.cpp \
+		-o $(BIN_DIR)/$@ $(LIBS) -l$(LIB_NAME) $(LIBS_DIRS) -L$(LIB_DIR)
+random_matrices_test: $(LIB) $(BIN_DIR)
 	$(CXX) $(CXX_FLAGS) $(DEFINES) $(INCLUDES) $(TESTS_DIR)/$@.cpp \
 		-o $(BIN_DIR)/$@ $(LIBS) -l$(LIB_NAME) $(LIBS_DIRS) -L$(LIB_DIR)
 ################################################################################
