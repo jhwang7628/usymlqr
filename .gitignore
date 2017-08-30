@@ -1,6 +1,7 @@
 bin
 build
 data
+matrices
 *.txt
 *.mod
 TestProgram*
