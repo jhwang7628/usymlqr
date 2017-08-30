@@ -1,6 +1,7 @@
 #ifndef USYM_LINEAR_SOLVER_HPP
 #define USYM_LINEAR_SOLVER_HPP
 #include "macros.h"
+#include "simple_timer.hpp"
 #include "sparse_matrix.hpp"
 #include "usym_tridiag.hpp"
 #include "tridiagonal_matrix.hpp"
@@ -75,6 +76,9 @@ class USYM_Linear_Solver
     T _oc; 
 
     // logging
+    SimpleTimer<T> _solve_timer;
+    SimpleTimer<T> _tridiag_timer;
+    SimpleTimer<T> _factor_timer;
     std::ostream *_logging = nullptr; 
     char _buf[1024];
 
@@ -215,8 +219,10 @@ Solve(T_Vector &x, T&rnorm)
     Log_Header(); 
     Log_Solve_Start(); 
     int flag = 0;
+    _solve_timer.Start(); 
     while(flag == 0)
         flag = Step();
+    _solve_timer.Pause();
     x = _x; 
     rnorm = _rnorm; 
     Log_Solve_End(); 
@@ -292,9 +298,19 @@ Log_Solve_End()
 {
     if (_verbose == 0) return; 
     (*_logging) << 
-    "============================================================\n" <<
-    "                        Solver END                          \n" << 
+    "============================================================\n"         <<
+    "                        Solver END                          \n"         << 
     "============================================================\n"; 
+    if (_verbose >= 2) {
+    (*_logging) << 
+    "  Timing statistics: \n"                                                <<
+    "    main solver loop      : " << _solve_timer.Duration()   << " sec\n"  <<
+    "      - tridiagonalization: " << _tridiag_timer.Duration() << " sec\n"  <<
+    "        - A   x           : " << _tridiagonalization->Ax_timer.Duration() << " sec\n"  <<
+    "        - A^T x           : " << _tridiagonalization->ATx_timer.Duration() << " sec\n" <<
+    "      - factorization     : " << _factor_timer.Duration()  << " sec\n"  <<
+    "============================================================\n"; 
+    }
 }
 
 //##############################################################################
@@ -355,15 +371,18 @@ Step()
     const T gamma_i = _matT(i-1, i  ); 
     T alpha_i; // to be determined
     T beta_ip1, gamma_ip1;  // beta, gamma
+    _tridiag_timer.Start(); 
     _tridiagonalization->Step(p_im1, q_im1,
                               p_i  , q_i  , 
                               beta_i, gamma_i, 
                               p_ip1, q_ip1,
                               alpha_i, beta_ip1, gamma_ip1); 
+    _tridiag_timer.Pause(); 
     int ntest;
     ntest = _matT.AddAlpha(alpha_i); assert(ntest == i+1); 
     ntest = _matT.AddBetaAndGamma(beta_ip1, gamma_ip1); assert(ntest == i+2); 
 
+    _factor_timer.Start(); 
     if (mode == USYMLQ)
     {
         // initialize matrix L in first two steps
@@ -481,6 +500,7 @@ Step()
             }
         }
     }
+    _factor_timer.Pause(); 
     if (_rnorm > 1./SMALL_NUM) flag = 11; 
     Log_Solve_Step(); 
 

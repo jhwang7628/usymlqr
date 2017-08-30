@@ -3,6 +3,7 @@
 #include <memory>
 #include "macros.h"
 #include "sparse_matrix.hpp"
+#include "simple_timer.hpp"
 //##############################################################################
 // Class USym_Tridiag
 //   A class for unsymmetric tridiagonalization, described in Saunders et al.
@@ -25,6 +26,9 @@ private:
     int _N; 
 
 public:
+    SimpleTimer<T> Ax_timer; 
+    SimpleTimer<T> ATx_timer; 
+
     USYM_Tridiag() = default; 
     USYM_Tridiag(const std::shared_ptr<T_Matrix> &A)
         : _A(A), _M(A->rows()), _N(A->cols())
@@ -89,10 +93,15 @@ Step(const T_Vector &p_im1, const T_Vector &q_im1,
      T &alpha_i, T &beta_ip1, T &gamma_ip1)
 {
     assert(_A); 
+
     // u = A q_i - gamma_i p_{i-1}
+    Ax_timer.Start();
     _u = (*_A )*q_i - gamma_i*p_im1; 
+    Ax_timer.Pause();
     // v = A^* p_i - beta_i q_{i-1}
+    ATx_timer.Start();
     _v = (*_AT)*p_i - beta_i*q_im1; 
+    ATx_timer.Pause();
     // alpha = p_i^T u
     alpha_i = p_i.dot(_u); 
     // continue..
