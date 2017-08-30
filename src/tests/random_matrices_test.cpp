@@ -40,6 +40,13 @@ int main(int argc, char **argv)
     solver.SetMaxIteration(maxStep);
     solver.Set_Logging(&(std::cout)); 
     solver.Set_Verbose_Level(2);
-    const int flag = solver.Solve(x, rnorm); 
-    PRINT(file, flag);
+    solver.Solve(x, rnorm); 
+    file.close();
+
+    file.open("A.txt", std::ios::out); 
+    file << (*A) << std::endl;
+    file.close(); 
+    file.open("b.txt", std::ios::out); 
+    file << b << std::endl;
+    file.close(); 
 }
