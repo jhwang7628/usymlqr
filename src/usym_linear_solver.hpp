@@ -42,6 +42,10 @@ class USYM_Linear_Solver
     Tridiagonal_Matrix<T> _matT; 
     Lower_Triangular_Matrix<T> _matL; 
 
+    // for verifying solutions
+    bool _exact_soln_available = false; 
+    T_Vector _xstar; 
+
     // cache for USYMLQ
     T _bnorm; 
     T _rhs_1;  // one step ago
@@ -87,6 +91,8 @@ class USYM_Linear_Solver
 
 public: 
     Mode mode = USYMLQ; 
+    inline void Set_Exact_Solution(const T_Vector &xstar)
+    {_xstar = xstar; _exact_soln_available = true;}
     inline void Set_Mode(const Mode &m)
     {mode = m;}
     inline void Set_Verbose_Level(const unsigned int v)
@@ -322,14 +328,21 @@ Log_Footer(const int flag)
 {
     if (_verbose == 0) return; 
     const T_Vector r     = (*_A)*_x     - _b; 
-    const T_Vector xstar = _A->fullPivHouseholderQr().solve(_b); 
-    const T_Vector rstar = (*_A)* xstar - _b; 
+
+    T rstar_norm = std::numeric_limits<T>::max(); 
+    if (_exact_soln_available)
+    {
+        const T_Vector rstar = (*_A)* _xstar - _b; 
+        rstar_norm = rstar.norm(); 
+    }
     (*_logging) << "\n\n" << 
     "============================================================\n" <<
     "  Solver Footer: \n"                                            << 
     "    stop flag  : " << flag << "\n"                              << 
+    "    x    (0)   : " << _x[0] << "\n"                             <<
+    "    xstar(0)   : " << _xstar[0] << "\n"                         <<
     "    norm(r    ): " << r.norm() << "\n"                          <<
-    "    norm(rstar): " << rstar.norm()  << "\n"                     <<
+    "    norm(rstar): " << rstar_norm  << "\n"                       <<
     "============================================================\n" <<
     "  Stop flag   Reason for termination\n"                         << 
     "                                                            \n" <<
