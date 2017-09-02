@@ -1,7 +1,6 @@
 \documentclass[10pt,letterpaper]{article}
 
 \usepackage[pdftex]{graphicx}
-\usepackage{amsmath} % just math
 \usepackage{amssymb} % allow blackboard bold (aka N,R,Q sets)
 \usepackage{amsmath,amsthm}
 \usepackage{mathtools}
@@ -20,6 +19,11 @@
 \usepackage[usenames,dvipsnames]{color}
 
 \newcommand{\partialderivative}[2]{\frac{\partial#1}{\partial#2}}
+\def\R{\mathbb{R}}
+\def\etal{\emph{et al.~}}
+\def\range{\text{range}}
+\def\alfa{\alpha}
+\def\gama{\gamma}
 
 \begin{document}
 
@@ -36,10 +40,65 @@
 %% Body
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
+In this project, we implemented the USYMLQ and USYMQR algorithms for 
+solving large, sparse linear systems in templated C++. The algorithms
+are defined in the paper by Saunders \etal \cite{saunders:1988}, and 
+in a closely-related paper by Reichel \etal \cite{reichel:2008}. These 
+two methods were seen as extension to the Conjugate Gradient (CG) and 
+the Minimum Residual (MINRES) methods for unsymmetric matrices. 
+In addition, as pointed out in
+\cite{reichel:2008}, USYMQR (or in their paper, ``generalized LSQR'', 
+despite there is no special case in which USYMQR reduces to LSQR) can 
+handle least-square problems (both of them can solve underdetermined 
+system). \\
 
+Our main contribution, in addition to providing with a tested 
+implementation in yet another language, is to evaluate the algorithms 
+on a variety of matrices in \emph{The Unversity of Florida Sparse 
+Matrix Collection} by Tim Davis \etal \cite{davis:2011}. 
+Hundreds of different matrices originated from problems in many 
+different areas (please see \cite{davis:2011} for the collection) were 
+run through USYMLQ and USYMQR solvers. In addition, for a few selected 
+problems, we compared the algorithms to the perhaps more well-known 
+sparse linear system solvers including BiCGStab, LSQR and LSMR. Since 
+these implementations are only available to the author in Matlab, the 
+comparison will be based on the number of iterations given similar 
+error tolerance for the same problem. \\
+
+\section{Tridiagonalization}
+Given an unsymmetric, real $M \times N$ matrix $A$, the following 
+decomposition exists (please see \cite{saunders:1988} for proof)
+\begin{align}
+    P^* A Q = T,
+\end{align}
+where $P$ and $Q$ are orthogonal matrices and $T$ is a tridiagonal 
+matrix. Note that if $A$ is symmetric then we can choose $P =Q$, then
+$T$ is symmetric and the symmetric Lanczos process can be derived. This
+decomposition is unique given a pair of starting vectors 
+$p_1 \in \R^M$ and $q_1 \in \R^N$, which are the first columns of $P$
+and $Q$, respectively. 
+The algorithms can be easily extended to complex matrices, and focus will 
+be given to only real matrices from now on. 
+
+At step $n$, $P = P_n = (p_1, p_2, \cdots, p_n)$, 
+$Q = Q_n = (q_1, q_2, \cdots, q_n)$, and 
+\begin{align} 
+    T = T_n = 
+    \begin{bmatrix}
+            \alfa_1 & \gama_2 & 0       & \cdots & 0      \\
+            \beta_2 & \alfa_2 & \gama_3 & \cdots & 0      \\
+            \vdots  & \ddots  & \ddots  & \ddots & \vdots \\
+            0       & \cdots  & \beta_{n-1} & \alfa_{n-1} & \gama_n \\
+            0       & \cdots  & 0           & \beta_n     & \alfa_n
+    \end{bmatrix}
+\end{align}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{USYMLQ Implementation} 
+\section{Implementation} 
+
+\subsection{USYMLQ}
+
+\subsection{USYMQR}
 
 % tridiagonalization
 % LQ factorization
@@ -81,6 +140,8 @@
 \section{Conclusion} 
 
 
+\bibliographystyle{unsrt}
+\bibliography{documentation}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \end{document}
