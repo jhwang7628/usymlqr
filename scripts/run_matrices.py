@@ -1,5 +1,5 @@
 #!/usr/bin/env python 
-import glob
+import glob,os
 from subprocess import call
 
 collection = 'matrices/list_maxrows_10000_maxcols_10000_real'
@@ -11,8 +11,10 @@ for g in groups:
     mtxs = glob.glob('%s/*.mtx' %(g))
     for mtxfile in mtxs: 
         basename = mtxfile.split('/')[-1]
-        logfile = '%s/%s.log' %(datadir, basename[:-4])
-        cmd = 'bin/ufl_test %s 2>&1 > %s' %(mtxfile, logfile)
+        logfile = '%s/%s_USYMQR.log' %(datadir, basename[:-4])
+        if os.path.isfile(logfile): 
+            continue
+        cmd = 'bin/ufl_test %s 1 2>&1 > %s' %(mtxfile, logfile)
         print cmd
         call(cmd, shell=True)
 

@@ -15,10 +15,10 @@ using T_Matrix = Eigen::SparseMatrix<T>;
 //##############################################################################
 int main(int argc, char **argv)
 {
-    if (argc != 2) 
+    if (argc < 2) 
     {
         std::cout << "**Usage: " << argv[0] 
-                  << " <matrix-market-filename>\n";
+                  << " <matrix-market-filename> [mode: 0 for USYMLQ; 1 for USYMQR; default: USYMQR]\n";
         exit(1); 
     }
     const char *filename = argv[1]; 
@@ -52,13 +52,8 @@ int main(int argc, char **argv)
     if ((retcode = mm_read_mtx_crd_size(file, &M, &N, &nz)) != 0) 
         exit(5); 
 
-    auto mode = USYMQR; 
-    if (M == N) 
-    { mode = USYMLQ; }
-    else if (M > N)
-    { mode = USYMQR; }
-    else 
-    { std::cout << "**ERROR** M < N, exit without doing anything\n"; exit(6);}
+    // default to QR if not specified
+    auto mode = (argc == 3 ? (atof(argv[2]) == 0 ? USYMLQ : USYMQR) : USYMQR); 
         
     std::cout << "Reading matrix: " << M << "-by-" << N << " with " 
               << nz << " non-zero entries\n"; 
