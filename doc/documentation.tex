@@ -14,16 +14,42 @@
 \usepackage{scrextend}
 \usepackage{listings}
 \usepackage{enumerate}
+\usepackage{algpseudocode}
 \usepackage{algorithm}
-\usepackage{algorithmic}
+\usepackage{url}
+\usepackage{float}
 \usepackage[usenames,dvipsnames]{color}
 
 \newcommand{\partialderivative}[2]{\frac{\partial#1}{\partial#2}}
+\newcommand{\alg}[1]{\textproc{#1}}
 \def\R{\mathbb{R}}
 \def\etal{\emph{et al.~}}
 \def\range{\text{range}}
 \def\alfa{\alpha}
 \def\gama{\gamma}
+\def\Span{\text{span}}
+
+% for showing c++ code segments
+\usepackage{listings,color}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+\lstset{frame=tb,
+    language=C++,
+    aboveskip=3mm,
+    belowskip=3mm,
+    showstringspaces=false,
+    columns=flexible,
+    basicstyle={\small\ttfamily},
+    numbers=none,
+    numberstyle=\tiny\color{gray},
+    keywordstyle=\color{blue},
+    commentstyle=\color{dkgreen},
+    stringstyle=\color{mauve},
+    breaklines=true,
+    breakatwhitespace=true,
+    tabsize=3
+}
 
 \begin{document}
 
@@ -32,7 +58,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Title
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\title{CME 338 Final Project: USYMLQ and USYMQR}
+\title{CME 338 Final Project: \alg{USYMLQ} and \alg{USYMQR}}
 \date{\today}
 \author{Jui-Hsien Wang}
 \maketitle
@@ -40,17 +66,17 @@
 %% Body
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
-In this project, we implemented the USYMLQ and USYMQR algorithms for 
-solving large, sparse linear systems in templated C++. The algorithms
-are defined in the paper by Saunders \etal \cite{saunders:1988}, and 
-in a closely-related paper by Reichel \etal \cite{reichel:2008}. These 
-two methods were seen as extension to the Conjugate Gradient (CG) and 
-the Minimum Residual (MINRES) methods for unsymmetric matrices. 
-In addition, as pointed out in
-\cite{reichel:2008}, USYMQR (or in their paper, ``generalized LSQR'', 
-despite there is no special case in which USYMQR reduces to LSQR) can 
-handle least-square problems (both of them can solve underdetermined 
-system). \\
+In this project, we implemented the \alg{USYMLQ} and \alg{USYMQR} 
+algorithms for solving large, sparse linear systems in templated C++. 
+The algorithms are defined in the paper by Saunders \etal 
+\cite{saunders:1988}, and in a closely-related paper by Reichel \etal 
+\cite{reichel:2008}. These two methods were seen as extension to the 
+Conjugate Gradient (\alg{CG}) and the Minimum Residual (\alg{MINRES}) 
+methods for unsymmetric matrices. In addition, as pointed out in 
+\cite{reichel:2008}, \alg{USYMQR} (or in their paper, 
+``generalized \alg{LSQR}'', despite there is no special case in which 
+\alg{USYMQR} reduces to \alg{LSQR}) can handle least-square problems 
+(both of them can solve underdetermined system). \\
 
 Our main contribution, in addition to providing with a tested 
 implementation in yet another language, is to evaluate the algorithms 
@@ -58,12 +84,12 @@ on a variety of matrices in \emph{The Unversity of Florida Sparse
 Matrix Collection} by Tim Davis \etal \cite{davis:2011}. 
 Hundreds of different matrices originated from problems in many 
 different areas (please see \cite{davis:2011} for the collection) were 
-run through USYMLQ and USYMQR solvers. In addition, for a few selected 
-problems, we compared the algorithms to the perhaps more well-known 
-sparse linear system solvers including BiCGStab, LSQR and LSMR. Since 
-these implementations are only available to the author in Matlab, the 
-comparison will be based on the number of iterations given similar 
-error tolerance for the same problem. \\
+run through \alg{USYMLQ} and \alg{USYMQR} solvers. In addition, for 
+a few selected problems, we compared the algorithms to the perhaps 
+more well-known sparse linear system solvers including \alg{BiCGStab}, 
+\alg{LSQR} and \alg{LSMR}. Since these implementations are only 
+available to the author in Matlab, the comparison will be based on the 
+number of iterations given similar error tolerance for the same problem. \\
 
 \section{Tridiagonalization}
 Given an unsymmetric, real $M \times N$ matrix $A$, the following 
@@ -78,9 +104,9 @@ decomposition is unique given a pair of starting vectors
 $p_1 \in \R^M$ and $q_1 \in \R^N$, which are the first columns of $P$
 and $Q$, respectively. 
 The algorithms can be easily extended to complex matrices, and focus will 
-be given to only real matrices from now on. 
+be given to only real matrices from now on. \\
 
-At step $n$, $P = P_n = (p_1, p_2, \cdots, p_n)$, 
+At step $n$, let $P = P_n = (p_1, p_2, \cdots, p_n)$, 
 $Q = Q_n = (q_1, q_2, \cdots, q_n)$, and 
 \begin{align} 
     T = T_n = 
@@ -90,33 +116,194 @@ $Q = Q_n = (q_1, q_2, \cdots, q_n)$, and
             \vdots  & \ddots  & \ddots  & \ddots & \vdots \\
             0       & \cdots  & \beta_{n-1} & \alfa_{n-1} & \gama_n \\
             0       & \cdots  & 0           & \beta_n     & \alfa_n
-    \end{bmatrix}
+    \end{bmatrix}. 
 \end{align}
+With this notation, we can derive an iterative tridiagonalization algorithm 
+\textproc{TriDiag} following \cite{saunders:1988}. Instead of a three-term
+recurrence relation in Lanczos process for symmetric matrices, we get two
+three-term recurrence relations. When $A$ is symmetric, this algorithm 
+falls back to the Lanczos process. Note that this is not a Krylov-subspace
+method, but an analogy in the sense that the union of subspaces 
+$\Span(Q_{2n})$ and $\Span(Q_{2n+1})$ contains the Krylov subspace generated
+by $n$ steps of the symmetric Lanczos algorithm applied to the normal 
+equations. In addition, they contain the space spanned by the intermediate 
+vectors obtained if the matrix of the normal equations is not formed 
+explicitly, but the multiplication by $A$ and $A^*$ are done in sequence 
+\cite{saunders:1988}.
+
+\begin{algorithm}[H]
+\caption{Tridiagonalization of an Unsymmetric Matrix.}
+\label{Alg:Tridiagonalization}
+\begin{algorithmic}[1]
+\Require $A$, and two arbitrary vectors $b \neq 0$, $c \neq 0$. 
+\Function{TriDiag}{$A$, $b$, $c$}. 
+\State $\beta_1 = \|b\|$, $\gama_1 = \|c\|$;
+\State $p_0 = q_0 = 0$, $p_1 = b/\beta_1$, $q_1 = c/\gama_1$;
+\For{$i = 1,2,3,\dots$}
+    \State $u = A   q_i - \gama_i p_{i-1}$;
+    \State $v = A^* p_i - \beta_i q_{i-1}$;
+    \State $\alfa_i = p_i^* u$;
+    \State $u -= \alfa_i   p_i$; 
+    \State $v -= \alfa_i^* q_i$; 
+    \State $\beta_{i+1} = \|u\|$; 
+    \State $\gama_{i+1} = \|v\|$; 
+    \If{$\beta_{i+1} = 0\,\,\textbf{or} \,\,\gama_{i+1} = 0$}
+        \State break ; 
+    \Else
+        \State $p_{i+1} = u / \beta_{i+1}$;  
+        \State $q_{i+1} = v / \gama_{i+1}$;  
+    \EndIf
+\EndFor
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Implementation} 
+\section{Solving Linear Systems}
+The algorithm \textproc{TriDiag} can be used to solve the linear system
+\begin{align} 
+    A x = b, \label{eq:linear_system}
+\end{align}
+where $A$ is a general, unsymmetric $M\times N$ matrix. When $M > N$, 
+we seek the solution to the least-square problem 
+$\min\limits_x \|A x - b \|_2$. Note that in the tridiagonalization 
+algorithm, $A$ is only defined by the operations $y \leftarrow Ax + y$ 
+and $y \leftarrow A^* x + y$. Therefore both algorithms are suited for
+solving large, sparse systems.\\
+
+We start the algorithm by assigning $p_1 = r_0 / \|r_0$, where 
+$r_0 = b - A x_0$ is the residual for an initial guess $x_0$.
+$q_1$ can be chosen randomly. However, in \cite{reichel:2008}, it was
+shown that it can be beneficial to set $q_1 \approx x$, which is 
+generally unknown except in certain applications where estimation is
+possible. After $j$ steps of \textproc{TriDiag}, we can approximate 
+the solution to Eq.~\eqref{eq:linear_system} in the affine subspace 
+$x_0 + \Span(Q_j)$. Depending on the desired properties of the residuals
+at step $j$, $r_j = b - A x_j$, we have two types of methods: 
+\alg{USYMLQ} and \alg{USYMQR} The following descriptions closely follow
+the derivation in \cite{saunders:1988}.
 
 \subsection{USYMLQ}
+We denote $x_j^{cg}$ the solution given by \alg{USYMLQ} such that the 
+residual vector $r_j^{cg} = b - A x_j^{cg}$ is orthogonal to 
+$\Span(P_j)$. This is an oblique projection method and $x_j^{cg}$ can
+be computed by: 
+\begin{align} 
+    & \text{Solve the $j\times j$ tridiagonal linear system 
+            $T_j h_j^{cg} = \beta_1 e_1$}. \\
+    & \text{Set $x_j^{cg} = x_0 + Q_j h_j^{cg}$}. 
+\end{align}
+An efficient implementation based on $LQ$ factorization of $T_j$ can
+be found in \cite{saunders:1988}, using only two $M$-vectors and four
+$N$-vectors. Updates at each step has complexity $\mathcal{O}(M N)$ due
+to matrix-vector multiplications. 
 
 \subsection{USYMQR}
-
-% tridiagonalization
-% LQ factorization
-% initial condition
-% termination condition
-% algorithm
-
+We denote $x_j^{cr}$ the solution given by \alg{USYMQR} such that the 
+residual vector $r_j^{cr} = b - A x_j^{cr}$ is minimal in the sense
+that 
+$\|r_j^{cr}\| = \min\limits_q\|b - A(x_0 + q)\|,\, q\in\Span(Q_j)$.
+This implies the monoticity of $\|r_{j+1}^{cr}\| \leq \|r_{j}^{cr}\|$. 
+In fact this method reduces to \alg{MINRES} when $A$ is symmetric, 
+hence the name conjugate residual method. $x_j^{cr}$ can be computed
+by: 
+\begin{align} 
+    & \text{Solve the $(j+1)\times j$ least-square problem
+            $\min_{h_j^{cr}}\|S_j h_j^{cr} - \beta_1 e_1$}\|. \\
+    & \text{Set $x_j^{cr} = x_0 + Q_j h_j^{cr}$},
+\end{align}
+where 
+\begin{align}
+    S_j = \begin{bmatrix}
+        T_j \\
+        \beta_{j+1}e_j^*
+    \end{bmatrix}.
+\end{align}
+An efficient implementation based on $QR$ factorization of $S_j$ can
+be found in \cite{saunders:1988}, One extra $N$-vector of storage is 
+needed compared to USYMLQ.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{USYMQR Implementation} 
+\section{Implementation and Solver Design} 
+The above algorithms were implemented in single-threaded C++. The 
+implementation is abstracted and templated so different numerical 
+linear algebra library can be used as long as it supports 
+(1) matrix-vector/scalar-vector multiplication; (2) matrix transpose; 
+(3) dot product, and (4) advanced initialization such as initializing 
+zeros or random numbers (implemented as static methods). We used Eigen,
+a free and open-sourced C++ template library for linear algebra 
+\cite{sw:Eigen}. It is header-only and the source code of version 3.3.4
+is included in the repository. Our \alg{USYMLQ} implementation was compared 
+to a Matlab version and on average is $30\%$ slower, which is probably 
+due to the underlying matrix-vector multiplication performance difference 
+Matlab, which uses Intel MKL as backend, performs matrix-vector 
+multiplication about $30\%$ faster than Eigen; this test was performed 
+on a $2000\times 2000$ matrix (0.0024 sec vs 0.0036 sec). 
+Although in the Eigen benchmark tests \cite{sw:EigenBenchmark}, it shows 
+that for matrix-vector multiplication Eigen is faster than MKL. 
+This does not seem to be the case given my clang compiler on Mac with 
+O3 optimization. \\
 
-% tridiagonalization
-% QR factorization
-% initial condition
-% termination condition
-% algorithm
+\paragraph{Use of the solver is simple.} Following is a code snippet for 
+how to use the solver given $A$ and $b$. It is easily configurable for 
+solve mode (\texttt{USYMLQ} or \texttt{USYMQR}), logging output 
+(e.g.~\texttt{std::cout}), logging verbose level, maximum timestep, and 
+solver tolerance. In the snippet, \texttt{T\_Vector} and \texttt{T\_Matrix} 
+are the template input arguments. 
+\begin{lstlisting}
+/* --------- SOLVER EXAMPLE --------- */         
+// ... define A and b and x0 ... 
+T_Vector x; 
+T rnorm; 
+USYM_Linear_Solver<T,T_Vector,T_Matrix> solver(A,b); 
+solver.Initialize(x0); 
+solver.Set_Mode(USYMQR);
+solver.SetMaxIteration(2000);
+solver.Set_Tol(1E-12, 1E-12);
+solver.Solve(x, rnorm); 
+\end{lstlisting}
 
-
+\paragraph{Termination criteria} The solver returns an integer flag 
+at termination to inform the user about the result of the solve. 
+It is summarized in the following table.
+\begin{table}[H]
+\centerline{
+\begin{tabular}{c|l}
+ \textbf{Stop flag}  & \textbf{Reason for termination} \\
+\hline
+\texttt{ 0} & $x = 0$ is the exact solution.                   \\
+            & No iterations were performed                     \\[1.3ex]
+\texttt{ 1} & $\|Ax - b\|$ is sufficiently small,              \\  
+            & given the values of $a_{tol}$ and $b_{tol}$.     \\[1.3ex]
+\texttt{ 2} & $\|A^*(Ax - b)\|$ is sufficiently small,         \\
+            & given the values of $a_{tol}$ and $b_{tol}$.     \\[1.3ex]
+\texttt{ 4} & $\|Ax - b\|$ is as small as seems reasonable.    \\[1.3ex]
+\texttt{ 7} & The iteration limit \texttt{maxItn} was reached. \\[1.3ex]
+\texttt{11} & The system $Ax = b$ appears to be incompatible. 
+\end{tabular}}
+\end{table}
+The notion of ``small'' is defined relatively to the problem. In particular,
+given an user-defined $a_{tol}$ and $b_{tol}$, the residual is deemed small
+if 
+\begin{align}
+    \frac{\|r\|}{\|b\|} < b_{tol} + a_{tol}\frac{\|A\| \|x\|}{\|b\|},
+\end{align}
+and we return the stop flag \texttt{1}. The matrix norm $\|A\|$ is the 
+Frobenius norm and estimated at step $j$ as $\|A\| \approx \|T_j\|$. 
+The advantages of this estimation are that (1) its cheaper than 
+running through the entire matrix $\|A\|$, and (2) 
+$\|T_{j+1}\| \geq \|T_j\|$; if they are equal then we find the exact 
+solution because \textproc{TriDiag} terminates, if they are not equal
+then $\|T_j\|$ is increasing monotonically, which implies monotonically 
+increasing solver tolerance and higher likelihood of termination.
+On the other hand, similar to the 
+\alg{SYMMLQ} algorithm, \alg{USYMLQ} is not suitable for solving an
+incompatible least-square problem (when $M > N$). We do not explicitly 
+stop the user from running \alg{USYMLQ} for least-square problems since
+it can be a compatible system. Instead, we observe empirically that
+incompatible system solved with \alg{USYMLQ} typically results in
+stagger residual changes or a rapidly growing residual. In either case,
+we return the stop flag \texttt{11}.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Results} 
 
@@ -127,6 +314,7 @@ $Q = Q_n = (q_1, q_2, \cdots, q_n)$, and
 % ill-conditioned matrices 
 % sparse matrices
 % inconsistent/consistent least square matrices 
+% image reconstruction (test when x~=b)
 
 %%% MAYBE %%%
 % comparison with lsqr and lsmr? 
@@ -139,7 +327,7 @@ $Q = Q_n = (q_1, q_2, \cdots, q_n)$, and
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Conclusion} 
 
-
+\newpage
 \bibliographystyle{unsrt}
 \bibliography{documentation}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
