@@ -118,6 +118,7 @@ public:
           _m{T_Vector(_N),T_Vector(_N),T_Vector(_N)},
           _matT(std::max(_M,_N)),
           _matL(std::max(_M,_N)), 
+          _xstar(T_Vector::Ones(_x.size())*std::numeric_limits<T>::max()),
           _logging(&(std::cout))
     {
         _z.reserve(std::max(_M,_N)); 
