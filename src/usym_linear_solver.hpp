@@ -336,6 +336,15 @@ Log_Footer(const int flag)
         const T_Vector rstar = (*_A)* _xstar - _b; 
         rstar_norm = rstar.norm(); 
     }
+#ifdef EXACT_SOLVE_AVAILABLE_THROUGH_EIGEN
+    else 
+    {
+        _xstar = _A->fullPivHouseholderQr().solve(_b);
+        const T_Vector rstar = (*_A)* _xstar - _b; 
+        rstar_norm = rstar.norm(); 
+    }
+#endif
+
     (*_logging) << "\n\n" << 
     "============================================================\n" <<
     "  Solver Footer: \n"                                            << 
@@ -420,7 +429,6 @@ Step()
             T &a22 = _matL(i  ,i  ); 
             T  a31 = 0.0;  // software design..
             T &a32 = _matL(i+1,i  ); 
-            assert(fabs(a31-0)<SMALL_NUM); // a31 should be zero before rotation
 
             T c11, c12, c21, c22; 
             ComputePlaneRotation(a11, a12,
@@ -431,7 +439,6 @@ Step()
                                a11, a12,
                                a21, a22,
                                a31, a32); 
-            assert(fabs(a12-0)<SMALL_NUM); // a12 should be zero after rotation
             _matL(i+1,i-1) = a31;  // write back
 
             const T z = _rhs_1 / _matL(i-1,i-1); 
@@ -484,6 +491,8 @@ Step()
         T_Vector &m3 = _m[(_lanczos_rewrite_pointer  )%3];
         m3 = (q_i - _sigm*m2 - _otau*m1) / c2s2; 
         _x = _x + _rhs_1*m3; 
+        _xnorm2 += _x.squaredNorm(); 
+        _xnorm  = sqrt(_xnorm2);
 
         // check convergence
         _Arnorm = _rnorm*sqrt(pow(_ogam*_q1 + _matT(i,i)*_q2,2) 
@@ -495,6 +504,8 @@ Step()
         _rnorm = fabs(_rhs_2); 
         _q1 = -_oc*_s; 
         _q2 =      _c; 
+        _t_rel = _rnorm / _bnorm; 
+        _t_tol = _b_tol + _a_tol*_Anorm*_xnorm/_bnorm; 
 
         // cache 
         _rhs_1 = _rhs_2; 
@@ -502,7 +513,8 @@ Step()
         _oc = _c; 
 
         if (_Arnorm/(_Anorm*_rnorm) < _a_tol) flag = 2;
-        if (_rnorm < _a_tol*_Anorm + _b_tol)
+        //if (_rnorm < _a_tol*_Anorm + _b_tol)
+        if (_t_rel < _t_tol)
         {
             flag = 1;
             if (!_forceStop)
