@@ -1,4 +1,4 @@
-function [x, istop, itn, normr, normAr, normA, condA, normx]...
+function [x, istop, itn, normr, resvec, normAr, normA, condA, normx]...
    = lsmr(A, b, lambda, atol, btol, conlim, itnlim, localSize, show)
 
 % LSMR   Iterative solver for least-squares problems.
@@ -133,6 +133,8 @@ function [x, istop, itn, normr, normAr, normA, condA, normx]...
   pfreq  = 20;   % print frequency (for repeating the heading)
   pcount = 0;    % print counter
 
+  resvec = []; 
+
   % Determine dimensions m and n, and
   % form the first vectors u and v.
   % These satisfy  beta*u = b,  alpha*v = A'u.
@@ -243,6 +245,7 @@ function [x, istop, itn, normr, normAr, normA, condA, normx]...
     fprintf('  %8.1e %8.1e' , test1, test2  )
   end
 
+  resvec = [resvec; normr];
 
   %------------------------------------------------------------------
   %     Main iteration loop.
@@ -343,6 +346,7 @@ function [x, istop, itn, normr, normAr, normA, condA, normx]...
     taud          = (zeta - thetatilde*tautildeold)/rhodold;
     d             = d + betacheck^2;
     normr         = sqrt(d + (betad - taud)^2 + betadd^2);
+    resvec = [resvec; normr];
     
     % Estimate ||A||.
     normA2        = normA2 + beta^2;
