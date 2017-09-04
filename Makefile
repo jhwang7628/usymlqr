@@ -65,10 +65,12 @@ tests: \
 	random_matrices_test \
 	ufl_test
 usymqr_test: $(LIB) $(BIN_DIR)
-	$(CXX) $(CXX_FLAGS) $(DEFINES) $(INCLUDES) $(TESTS_DIR)/$@.cpp \
+	$(CXX) $(CXX_FLAGS) -DEXACT_SOLVE_AVAILABLE_THROUGH_EIGEN \
+	$(DEFINES) $(INCLUDES) $(TESTS_DIR)/$@.cpp \
 		-o $(BIN_DIR)/$@ $(LIBS) -l$(LIB_NAME) $(LIBS_DIRS) -L$(LIB_DIR)
 random_matrices_test: $(LIB) $(BIN_DIR)
-	$(CXX) $(CXX_FLAGS) $(DEFINES) $(INCLUDES) $(TESTS_DIR)/$@.cpp \
+	$(CXX) $(CXX_FLAGS) -DEXACT_SOLVE_AVAILABLE_THROUGH_EIGEN \
+    $(DEFINES) $(INCLUDES) $(TESTS_DIR)/$@.cpp \
 		-o $(BIN_DIR)/$@ $(LIBS) -l$(LIB_NAME) $(LIBS_DIRS) -L$(LIB_DIR)
 ufl_test: $(LIB) $(BIN_DIR) $(OBJ_UFLIO)
 	$(CXX) $(CXX_FLAGS) $(DEFINES) $(INCLUDES) $(TESTS_DIR)/$@.cpp \

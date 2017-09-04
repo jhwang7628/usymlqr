@@ -6,35 +6,41 @@
 #include "sparse_matrix.hpp"
 #include "usym_tridiag.hpp"
 #include "Eigen/Dense"
-
+#define GENERATE_COMPATIBLE_SYSTEM
 //##############################################################################
 using T = double; 
 using T_Vector = Eigen::Matrix<T,Eigen::Dynamic,1>; 
 using T_Matrix = Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic>; 
 //##############################################################################
-inline bool File_Exists(const char *name) {
-    std::ifstream f(name);
+inline bool File_Exists(const std::string &name) {
+    std::ifstream f(name.c_str());
     return f.good();
 }
 //##############################################################################
 int main(int argc, char **argv)
 {
-    if (argc != 4) 
+    if (argc != 5) 
     {
         std::cerr << "**Usage: " << argv[0] 
-                  << " <mode: 0 for USYMLQ; 1 for USYMQR> <M> <N>\n";
+                  << " <mode: 0 for USYMLQ; 1 for USYMQR> <M> <N> <data_dir>\n";
         exit(1); 
     }
     const auto mode = (atof(argv[1]) == 0 ? USYMLQ : USYMQR); 
     const int M = atoi(argv[2]);
     const int N = atoi(argv[3]);
+    const std::string datadir(argv[4]);
 
     const std::string modeName = (mode == USYMLQ ? "USYMLQ" : "USYMQR");
-    const int maxStep = std::max(M,N)*100;
+    const int maxStep = std::max(M,N)*5;
     // initialize A and b
     std::shared_ptr<T_Matrix> A(new T_Matrix);
     (*A) = T_Matrix::Random(M,N); 
-    const T_Vector b = T_Vector::Random(M); 
+#ifdef GENERATE_COMPATIBLE_SYSTEM
+    const T_Vector xstar = T_Vector::Random(N); 
+    const T_Vector b  = (*A)*xstar; 
+#else
+    const T_Vector b = T_Vector::Random(M);
+#endif
     const T_Vector x0 = T_Vector::Zero(N); 
     // output storage
     T_Vector x; 
@@ -42,29 +48,14 @@ int main(int argc, char **argv)
 
     // determine filename
     std::string filename_out, filename_A, filename_b;
-    { 
-        char buf[512]; 
-        int count = 0;
-        while(true)
-        {
-            snprintf(buf, 512, 
-                     "data/random_mat/log_%d_M%d_N%d_%s.log",
-                     count, M, N, modeName.c_str());
-            if (!File_Exists(&(buf[0])))
-            {
-                filename_out = std::string(buf);
-                snprintf(buf, 512, 
-                         "data/random_mat/A_%d_M%d_N%d_%s.txt",
-                         count, M, N, modeName.c_str());
-                filename_A   = std::string(buf);
-                snprintf(buf, 512, 
-                         "data/random_mat/b_%d_M%d_N%d_%s.txt",
-                         count, M, N, modeName.c_str());
-                filename_b   = std::string(buf);
-                break;
-            }
-            count ++;
-        }
+    filename_out = datadir + "/" + modeName + ".log"; 
+    filename_A   = datadir + "/" + "A.txt"; 
+    filename_b   = datadir + "/" + "b.txt"; 
+    if (File_Exists(filename_out))
+    {
+        std::cout << "**WARNING** Log file exists, abort solve: " 
+                  << filename_out << std::endl; 
+        exit(1);
     }
     std::ofstream file(filename_out.c_str()); 
     // initialize solver with x0
