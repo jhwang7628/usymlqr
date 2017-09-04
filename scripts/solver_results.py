@@ -96,6 +96,4 @@ class Solver_Results:
                 l = lines[ii]
                 results.r_exact = float(l.split(':')[-1].split(' ')[1])
             ii += 1
-
-                    
-
+        return results
