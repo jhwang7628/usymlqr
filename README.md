@@ -35,7 +35,6 @@ solver.Set_Mode(USYMQR);
 solver.SetMaxIteration(2000);
 solver.Set_Tol(1E-12, 1E-12);
 solver.Solve(x, rnorm);
-\end{lstlisting}
 ```
 
 ## Documentation
