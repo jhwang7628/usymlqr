@@ -172,10 +172,9 @@ void Linear_Solve(const int M, const int N, const int maxStep)
     std::shared_ptr<T_Matrix> A(new T_Matrix);
     (*A) = T_Matrix::Random(M,N); 
     const T_Vector b = T_Vector::Random(M); 
-    const T_Vector x0 = T_Vector::Zero(N); 
-    // initialize solver with x0
+    // initialize solver
     USYM_Linear_Solver<T,T_Vector,T_Matrix> solver(A,b); 
-    solver.Initialize(x0); 
+    solver.Initialize(); 
     T_Vector x; 
     T rnorm; 
     solver.Set_Mode(USYMQR);

@@ -41,7 +41,6 @@ int main(int argc, char **argv)
 #else
     const T_Vector b = T_Vector::Random(M);
 #endif
-    const T_Vector x0 = T_Vector::Zero(N); 
     // output storage
     T_Vector x; 
     T rnorm; 
@@ -59,9 +58,9 @@ int main(int argc, char **argv)
         exit(1);
     }
     std::ofstream file(filename_out.c_str()); 
-    // initialize solver with x0
+    // initialize solver
     USYM_Linear_Solver<T,T_Vector,T_Matrix> solver(A,b); 
-    solver.Initialize(x0); 
+    solver.Initialize(); 
     solver.Set_Mode(mode);
     solver.SetMaxIteration(maxStep);
     solver.Set_Logging(&(file)); 

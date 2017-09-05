@@ -127,7 +127,7 @@ public:
         {_maxItn = maxN;}
     inline void Set_Tol(const T atol, const T btol)
         {_a_tol = atol; _b_tol = btol;}
-    T_Vector Initialize(const T_Vector &x0);
+    T_Vector Initialize();
     int Solve(T_Vector &x, T &rnorm); 
 
     // logging
@@ -158,7 +158,7 @@ private:
 //##############################################################################
 template<typename T, class T_Vector, class T_Matrix>
 T_Vector USYM_Linear_Solver<T,T_Vector,T_Matrix>::
-Initialize(const T_Vector &x0)
+Initialize()
 {
     assert(_A); 
 
@@ -173,7 +173,7 @@ Initialize(const T_Vector &x0)
     T_Vector &qNow = _q[1]; 
 
     T beta_1, gamma_1; 
-    T_Vector r0 = (_b - (*_A)*x0);
+    T_Vector r0 = (_b);
     beta_1 = r0.norm(); 
     pNow = r0 / beta_1;
 
@@ -185,7 +185,7 @@ Initialize(const T_Vector &x0)
     assert(n==1); 
 
     // initialize x, w
-    _x = x0; 
+    _x = T_Vector::Zero(_N); 
     _w = qNow; 
     _rhs_1 = beta_1; 
     _rhs_2 = 0.0;

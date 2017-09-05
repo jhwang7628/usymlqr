@@ -72,7 +72,6 @@ int main(int argc, char **argv)
     // settings
     const int maxStep = std::max(M,N)*20;
     // constructing b
-    T_Vector x0    = T_Vector::Zero(N); 
     T_Vector xstar = T_Vector::Random(N); 
     T_Vector b     = (*A)*xstar; 
     // solution vector
@@ -81,7 +80,7 @@ int main(int argc, char **argv)
 
     // initialize solver with x0
     USYM_Linear_Solver<T,T_Vector,T_Matrix> solver(A,b); 
-    solver.Initialize(x0); 
+    solver.Initialize(); 
     solver.Set_Exact_Solution(xstar); 
     solver.Set_Mode(mode);
     solver.SetMaxIteration(maxStep);
