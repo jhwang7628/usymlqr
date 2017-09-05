@@ -36,7 +36,8 @@ solver.SetMaxIteration(2000);
 solver.Set_Tol(1E-12, 1E-12);
 solver.Solve(x, rnorm);
 ```
+Please see `src/tests` for more examples. 
 
 ## Documentation
-Please see doc/documentation.pdf for more detailed analysis and 
+Please see `doc/documentation.pdf` for more detailed analysis and 
 solver testing.
