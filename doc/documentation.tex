@@ -506,29 +506,123 @@ conclusion.
     \label{fig:x_lsqr_usymqr}
 \end{figure}
 
-%%% NEED THESE %%%
-% random square matrices 
-% matrices with specific eigenvalues 
-% matrices with specific singular values 
-% ill-conditioned matrices 
-% sparse matrices
-% inconsistent/consistent least square matrices 
-% image reconstruction (test when x~=b)
+\newpage
+\subsection{UFL Sparse Matrix Collection}
+The UFL sparse matrix collection \cite{davis:2011} is a large collection
+of sparse matrices that is open to public. Most of the matrices come
+from real-world problem, including structural engineering, computational 
+fluid dynamics, computer graphics/vision, robotics, optimization, 
+circuite simulations etc., to name just a few. This impressive 
+collection provides an excellent source of test problems for our
+\alg{USYMLQ} and \alg{USYMQR} algorithms. \\ 
 
-%%% MAYBE %%%
-% comparison with lsqr and lsmr? 
-% comparison with the naive solve
+The main goal for this testing is to see how many problems can the
+\alg{USYMLQ} and \alg{USYMQR} handle. As of September, 2017, the UFL
+collection has $1517$ matrices that has real entries. We restrict our 
+discussion on only unsymmetric, real matrices but our algorithms and 
+implementation can be readily extended to handle complex and integer
+matrices (only test modules and proper linear algebra classes need to 
+be rewritten).  Out of these matrices, we further restrict ourselves 
+to problems that have less than $10000$ rows and $10000$ cols, mainly 
+due to constraint on time and computational power. \\
 
-%% on average, matlab uses 0.0024 sec on matrix-vector product for 
-%% 2000-2000, and Eigen uses 0.0036
+We found in total $1017$ matrices that satisfy the constraints mentioned
+above. These matrices were downloaded using an in-house Java
+Script code in the Matrix Market format. I/O class for this format
+in C++ was written in order to integrate them seamlessly into the 
+pipeline. These matrices have various dimensions and we made no
+attempt to probe its properties (e.g.~its rank, singular values, etc.,
+are all unknown). Please see figure \ref{fig:ufl_size} for the distribution
+of the problem sizes. To speed up the process (solving $2034$ problems
+in total), we multi-threaded the testing program. The whole run can 
+be completed in tens of minutes on a Xeon workstation. All problems were run
+with the tolerance $a_{tol} = b_{tol} = 10^{-12}$, and maximum iteration 
+$\texttt{maxItn} = 20\max(M,N)$. 
 
-%% lsmr and lsqr only out-perform usymqr for compatible lsq problems
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=2.5in]{figures/ufl_problems_10k.pdf}
+    \caption{This figure shows the distribution of problem sizes in the
+             test set extracted from the UFL collection. Note that there
+             are actually more under-determined problems than 
+             over-determined problems. This bias is in the collection
+             itself rather than our conscious selection. We ran both
+             solvers, \alg{USYMLQ} and \alg{USYMQR}, on each of the 
+             problem, generated in total $2034$ solver results that
+             need processing.}
+    \label{fig:ufl_size}
+\end{figure}
 
+We were able to obtain reasonable solutions for the majority of the problems. 
+However, there are some problems that give our solver troubles. If 
+residual reduction at $10^{-3}$ is needed, then \alg{USYMLQ} solves $79.8\%$
+of the problems and \alg{USYMQR} solves $98.5\%$; if residual reduction
+at $10^{-6}$ is needed, then \alg{USYMLQ} solves only $43.2\%$ of the problem
+and \alg{USYMQR} solves $72.2\%$ of the problems. These statistics are deduced
+from the data we show in table table \ref{tab:ufl_stopflags} and figure 
+\ref{fig:ufl_reduction}. A rather large portion of them returned with 
+stop flag \texttt{7}, which means iteration limits were reached. It is possible 
+that we can improve the residual at the cost of more iterations, but this 
+is not desired as the largest case we have in the test set is $9801\times 9801$,
+and the iteration limit was set to $0.2$ million already. In general, our 
+experiments seem to suggest that \alg{USYMQR} is more general compared to 
+\alg{USYMLQ}, and should be tried first when a problem of unknown properties 
+is encountered. In terms of computational speed, \alg{USYMQR} seems to be
+slightly faster compared to \alg{USYMLQ} on many problems (see figure 
+\ref{fig:ufl_speed}).
+
+\begin{table}[H]
+\centerline{
+\begin{tabular}{c|c c}
+    \textbf{Solver Type} & \textbf{Stop flag} & \textbf{Count} \\
+    \hline
+                         &         1          &      400       \\
+          USYMLQ         &         7          &      594       \\
+                         &         11         &      20        \\
+    \hline
+                         &         1          &      644       \\
+          USYMQR         &         7          &      356       \\
+                         &         11         &      14        
+\end{tabular}}
+\caption{Summary of stop flag.}
+\label{tab:ufl_stopflags}
+\end{table}
+
+
+\begin{figure}[H]
+    \minipage{0.5\textwidth}
+    \includegraphics[width=\linewidth]{figures/ufl_residual_reduction_10k.pdf}
+    \endminipage\hfill
+    \minipage{0.5\textwidth}
+    \includegraphics[width=\linewidth]{figures/ufl_residual_reduction_distribution_10k.pdf}
+    \endminipage\hfill
+    \caption{Left: Residual reduction plotted against problem size. 
+             Both solvers are run for all problems 
+             (blue: \alg{USYMQR}; red: \alg{USYMLQ}). Right: Cumulation count of 
+             the residual reduction.}
+    \label{fig:ufl_reduction}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=4.5in]{figures/ufl_timing_10k.pdf}
+    \caption{This figure shows the statistics of the timing. We timed  
+             the solver from initialization to final termination and 
+             return the total elapsed time. This is done on a workstation
+             with Intel Xeon E5-2690V3 2.6GHz 12-core processors.}
+    \label{fig:ufl_speed}
+\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Conclusion} 
+In conclusion, we implemented the \alg{USYMLQ} and \alg{USYMQR} in C++. 
+Both algorithms were compared to \alg{LSQR}, \alg{LSMR}, and 
+\alg{BiCGStab} for solving dense random problems. We then constructed
+a test set based on Tim Davis' UFL sparse matrix collection. About two
+thousand instances were run to test the robustness of \alg{USYMLQ} and 
+\alg{USYMQR}, and it was found that reasonable solutions can be obtained
+for the majority of them. 
 
-\newpage
 \bibliographystyle{unsrt}
 \bibliography{documentation}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
