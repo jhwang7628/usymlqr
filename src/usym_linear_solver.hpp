@@ -193,6 +193,7 @@ Initialize(const T_Vector &x0)
     _xnorm2 = 0.0; 
     _bnorm = _b.norm();
     _rnorm = fabs(beta_1); 
+    _Arnorm = 0.0;
 
     // USYMQR
     _sbar = 0.0;
@@ -275,7 +276,7 @@ Log_Solve_Start()
     else if (_verbose == 2) 
         snprintf(_buf, 1024, 
                  "%5s   %15s   %15s   %15s   %15s   %15s\n", 
-                 "Itn", "x(1)", "norm(r)", "norm(A)", "relTol", "norm(r)/norm(b)");
+                 "Itn", "x(1)", "norm(r)", "norm(A)", "norm(A\'(Ax-b))/norm(A)", "norm(r)/norm(b)");
     (*_logging) << _buf; 
 }
 
@@ -286,13 +287,15 @@ template<typename T, class T_Vector, class T_Matrix>
 void USYM_Linear_Solver<T,T_Vector,T_Matrix>::
 Log_Solve_Step()
 {
+    const T relArnorm = ((_step!=0) ? _Arnorm/_Anorm 
+                                    : std::numeric_limits<T>::max());
     if (_verbose == 0) return; 
     else if (_verbose == 1) 
         snprintf(_buf, 1024, "%5d\n", _step);
     else if (_verbose == 2) 
         snprintf(_buf, 1024, 
                  "%5d   % 10.8e   % 10.8e   % 10.8e   % 10.8e   % 10.8e\n", 
-                 _step, _x(0),    _rnorm,   _Anorm,   _t_tol,   _t_rel); 
+                 _step, _x(0),    _rnorm,   _Anorm,   relArnorm,   _t_rel); 
     (*_logging) << _buf;
 }
 
@@ -527,7 +530,7 @@ Step()
         }
     }
     _factor_timer.Pause(); 
-    if (_rnorm > 1./SMALL_NUM) flag = 11; 
+    if (_rnorm > 1./_b_tol) flag = 11; 
     Log_Solve_Step(); 
 
     _lanczos_rewrite_pointer = (_lanczos_rewrite_pointer+1)%3; 
