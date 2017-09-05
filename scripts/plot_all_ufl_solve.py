@@ -62,7 +62,6 @@ with open(listfile,'r') as stream:
     
     # matrix size
     plt.figure(figsize=[6,6])
-    print mat_sizes1
     plt.plot(mat_sizes1[:,0], mat_sizes1[:,1], 'ob', label='USYMQR')
     plt.plot(mat_sizes0[:,0], mat_sizes0[:,1], 'xr', label='USYMLQ')
     plt.xlabel('M')
