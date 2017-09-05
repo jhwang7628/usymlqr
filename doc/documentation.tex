@@ -80,7 +80,7 @@ methods for unsymmetric matrices. In addition, as pointed out in
 
 Our main contribution, in addition to providing with a tested 
 implementation in yet another language, is to evaluate the algorithms 
-on a variety of matrices in \emph{The Unversity of Florida Sparse 
+on a variety of matrices, including \emph{The Unversity of Florida Sparse 
 Matrix Collection} by Tim Davis \etal \cite{davis:2011}. 
 Hundreds of different matrices originated from problems in many 
 different areas (please see \cite{davis:2011} for the collection) were 
@@ -95,7 +95,7 @@ number of iterations given similar error tolerance for the same problem. \\
 Given an unsymmetric, real $M \times N$ matrix $A$, the following 
 decomposition exists (please see \cite{saunders:1988} for proof)
 \begin{align}
-    P^* A Q = T,
+    P^* A Q = T, \label{eq:PAQT}
 \end{align}
 where $P$ and $Q$ are orthogonal matrices and $T$ is a tridiagonal 
 matrix. Note that if $A$ is symmetric then we can choose $P =Q$, then
@@ -276,36 +276,235 @@ It is summarized in the following table.
 \texttt{ 1} & $\|Ax - b\|$ is sufficiently small,              \\  
             & given the values of $a_{tol}$ and $b_{tol}$.     \\[1.3ex]
 \texttt{ 2} & $\|A^*(Ax - b)\|$ is sufficiently small,         \\
-            & given the values of $a_{tol}$ and $b_{tol}$.     \\[1.3ex]
+            & given the values of $a_{tol}$.                   \\[1.3ex]
 \texttt{ 4} & $\|Ax - b\|$ is as small as seems reasonable.    \\[1.3ex]
 \texttt{ 7} & The iteration limit \texttt{maxItn} was reached. \\[1.3ex]
-\texttt{11} & The system $Ax = b$ appears to be incompatible. 
+\texttt{11} & The system $Ax = b$ is incompatible given 
+              $b_{tol}$.
 \end{tabular}}
 \end{table}
-The notion of ``small'' is defined relatively to the problem. In particular,
-given an user-defined $a_{tol}$ and $b_{tol}$, the residual is deemed small
-if 
-\begin{align}
-    \frac{\|r\|}{\|b\|} < b_{tol} + a_{tol}\frac{\|A\| \|x\|}{\|b\|},
-\end{align}
-and we return the stop flag \texttt{1}. The matrix norm $\|A\|$ is the 
-Frobenius norm and estimated at step $j$ as $\|A\| \approx \|T_j\|$. 
-The advantages of this estimation are that (1) its cheaper than 
-running through the entire matrix $\|A\|$, and (2) 
+
+\noindent The notion of ``sufficiently small'' is defined relatively to 
+the problem.  In general, the error tolerance is defined by two 
+user-specified numbers, $a_{tol}$ and $b_{tol}$. 
+All the matrix norms defined below are Frobenius 
+norms; all the vector norms are Euclidean norms. 
+We make a further approximation that at step $j$, 
+the norm of $A$ can be approximated by $\|A\| \approx \|T\|$.
+The advantages of this approximation are that (1) its usually cheaper than 
+running through the entire matrix ($\mathcal{O}(j)$ compared to 
+$\mathcal{O}(MN)$ although the latter can be computed only once), and (2) 
 $\|T_{j+1}\| \geq \|T_j\|$; if they are equal then we find the exact 
 solution because \textproc{TriDiag} terminates, if they are not equal
 then $\|T_j\|$ is increasing monotonically, which implies monotonically 
-increasing solver tolerance and higher likelihood of termination.
-On the other hand, similar to the 
-\alg{SYMMLQ} algorithm, \alg{USYMLQ} is not suitable for solving an
-incompatible least-square problem (when $M > N$). We do not explicitly 
-stop the user from running \alg{USYMLQ} for least-square problems since
-it can be a compatible system. Instead, we observe empirically that
-incompatible system solved with \alg{USYMLQ} typically results in
-stagger residual changes or a rapidly growing residual. In either case,
-we return the stop flag \texttt{11}.
+increasing solver tolerance (see below) and higher 
+likelihood of termination. We explain the triggering conditions for each 
+flag in the following paragraphs. \\
+
+\noindent\texttt{Stop flag 1}: 
+\begin{align}
+    \frac{\|r\|}{\|b\|} < b_{tol} + a_{tol}\frac{\|A\| \|x\|}{\|b\|},
+\end{align}
+
+\noindent\texttt{Stop flag 2} (only in least-square problems):
+\begin{align}
+    \frac{\|A^*(Ax - b)\|}{\|A\|\|r\|} < a_{tol}
+\end{align}
+
+\noindent\texttt{Stop flag 11} (only in least-square problems): 
+\begin{align}
+    \frac{1}{\|r\|} < b_{tol}
+\end{align}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Results} 
+We compare our \alg{USYMLQ} and \alg{USYMQR} implementations to the
+widely used \alg{LSQR}, \alg{LSMR} and \alg{BiCGStab} algorithms. 
+\alg{LSQR} and \alg{LSMR} are suitable for solving both square and 
+rectangular systems (including under- and over-constrained systems), 
+and \alg{BiCGStab} is suitable for square system. We used the Matlab 
+built-in version of \alg{LSQR} and \alg{BiCGStab}, and community 
+supported Matlab implementation of \alg{LSMR} \cite{sw:lsmr}. Because 
+our implementation is in C++, it does not make much sense to compare 
+the runtime speed across these algorithms. Instead, our comparison 
+will be based on number of iterations mainly since all of these 
+algorithms have matrix-vector multiplications at every step, which 
+should be the main bottleneck for speed. \\
+
+Some numerical experiments comparing a subset of these algorithms 
+can be found in the literatures.
+In \cite{saunders:1988}, a family of special block tridiagonal matrix 
+was constructed to compared \alg{USYMLQ} and \alg{USYMQR} to 
+\alg{LSQR}. This 1-parameter matrix family has the following shape,
+\begin{align} 
+    A = \begin{bmatrix}
+         B & -I \\
+        -I &  B & -I \\
+           &  \ddots & \ddots & \ddots \\
+           &         &   -I   &   B    &   -I \\
+           &         &        &  -I    &    B 
+        \end{bmatrix}, \quad
+    B = \begin{bmatrix}
+         4 & a \\
+        b &  4 & a \\
+           &  \ddots & \ddots & \ddots \\
+           &         &   b   &   4    &   a \\
+           &         &        &  b    &    4 
+        \end{bmatrix},
+\end{align}
+where $a = -1+\delta$, and $b = -1 -\delta$. It was found that in general
+\alg{LSQR} converges in less iterations when $\delta\geq 1.0$. In 
+\cite{reichel:2008}, it was found that \alg{USYMQR} converged faster than
+\alg{LSQR} when the solution cannot be well approximated by vectors in 
+low-dimensional Krylov subspaces, for example, a near-constant function 
+given by the discretization of Fredholm integral equation of the first kind. 
+Furthermore, \cite{reichel:2008} observed that it can be beneficial to
+choose the second starting vector in the tridiagonalization, $q_1$, 
+so that it approximates the solution, $q_1 \approx x/\|x\|$. The use 
+of this was demonstrated in an image deblurring problem, where 
+$b \approx x$ and therefore was available. However, it is generally not true
+one would have an approximate $x$ before the start of the algorithm.
+Although these tests were well-designed to probe some properties of the 
+algorithm, the selection of problems can cause bias in the evaluation. 
+In the following sections, we tested \alg{USYMLQ} and \alg{USYMQR} on
+(1) dense random matrices and (2) the UFL sparse matrix collection in
+an attempt to gain more insights about the algorithms.
+
+\subsection{Dense, random matrices}
+
+The first set of test cases are square matrices that are dense and 
+initialized randomly. The entries of the matrix are sampled uniformly
+between $[-1, 1]$ through Eigen's advanced initialization methods. 
+Right-hand-side vector $b$ is also initialized randomly and have 
+values between $[-1, 1]$. Matrices of three different sizes were
+initialized: $50\times 50$, $500 \times 500$, and $5000 \times 5000$.\\
+
+Both \alg{USYMLQ}, \alg{USYMQR} determine the exact solution in at most
+$N$ steps (see \cite{saunders:1988} for proof) in exact arithmetics, however, 
+numerical errors cause the matrices $P$ and $Q$ to loss orthogonality
+after some steps and in general equation \eqref{eq:PAQT} might not hold. 
+Krylov subspace methods all have similar properties. It is therefore not
+surprising to see that the number of iterations needed is higher than
+the dimension of the problem, after which the residual drops rapidly 
+to suggest a subspace containing the solution has been found. However, 
+it is surprising to see that both \alg{USYMLQ} and \alg{USYMQR} found 
+this space a bit earlier compared to \alg{LSQR} and \alg{LSMR}, 
+suggesting that they might be more robust against orthogonality drift.
+In general, we found that \alg{USYMQR} has much better convergence 
+properties than \alg{USYMLQ}, which oscillates quite a bit and cannot
+be stopped early. \alg{USYMQR}, due to its minimal residual guarantee,
+$\|r_{j+1}^{cr}\| \leq \|r_{j}^{cr}\|$, has smoother convergence and
+can be stopped early for higher error tolerance.
+Please see figure \ref{fig:square_50}-\ref{fig:square_5000} for the
+comparison.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=5.0in]{figures/conv_all_benchmark_50.pdf}
+    \caption{$M=50$, $N=50$, $A$ and $b$ are randomly initialized.}
+    \label{fig:square_50}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=5.0in]{figures/conv_all_benchmark_500.pdf}
+    \caption{$M=500$, $N=500$, $A$ and $b$ are randomly initialized.}
+    \label{fig:square_500}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=5.0in]{figures/conv_all_benchmark_5000.pdf}
+    \caption{$M=5000$, $N=5000$, $A$ and $b$ are randomly initialized.}
+    \label{fig:square_5000}
+\end{figure}
+
+Next we look at three different random least-square problems ($M>N$) 
+with $50\times 25$, $500\times 250$, and $5000\times 2500$ dimension. 
+The same randomization as square systems was applied to generate $A$ and $b$. 
+We found that for compatible systems ($Ax=b$), all algorithms converged
+quickly with iteration count $j < N$ 
+(see figures \ref{fig:compat_50_25}-\ref{fig:compat_5000_2500}). 
+Except for the smallest test case ($M=50$, $N=25$), 
+\alg{LSQR} and \alg{LSMR} converged faster than 
+\alg{USYMQR} and \alg{USYMLQ}. Like square systems, \alg{USYMQR} 
+demonstrates smoother convergence behavior than \alg{USYMLQ}. For incompatible
+systems ($Ax\approx b$), we exclude \alg{USYMLQ} because it is not suitable 
+for incompatible least-square problems. For incompatible system, we quantify
+the convergence using the relative least-square error 
+$r_{lsq} = \|A^*(Ax -b)\|/\|A\|$. The results are shown in figures 
+\ref{fig:incompat_50_25}-\ref{fig:incompat_5000_2500}. We observed that there
+seem to be an implementation-related issue to prevent the \alg{USYMQR} solver 
+from converging below $10^{-8}$, and therefore our stopping criteria 
+($a_{tol}=b_{tol}=10^{-12}$) was never triggered (see paragraph ``Termination
+criteria'' for descriptions). Because \alg{USYMQR} only guarantees monotonically
+decreasing $\|r\| = \|Ax_j -b\|$, we see that in all three cases the least-square
+error actually increased. Interestingly, this seemingly implementation error
+does not appear in either square or underdetermined system solve. If we 
+compared the least-square solution returned by \alg{USYMQR} (termined with flag
+\texttt{7}: iteration reached maximum) and \alg{LSQR}, 
+we found that the solutions are indeed very close 
+(figure \ref{fig:x_lsqr_usymqr}). These two facts suggest that the problem might
+be inherent to the algorithm and not the implementation, although further
+numerical and theoretical investigation is needed to draw a meaningful 
+conclusion.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=5.0in]{figures/conv_all_benchmark_compatible_50_25.pdf}
+    \caption{$M=50$, $N=25$, $A$ and $b$ are randomly initialized.
+             $A$ is compatible}
+    \label{fig:compat_50_25}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=5.0in]{figures/conv_all_benchmark_compatible_500_250.pdf}
+    \caption{$M=500$, $N=250$, $A$ and $b$ are randomly initialized. 
+             $A$ is compatible}
+    \label{fig:compat_500_250}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=5.0in]{figures/conv_all_benchmark_compatible_5000_2500.pdf}
+    \caption{$M=5000$, $N=2500$, $A$ and $b$ are randomly initialized.
+             $A$ is compatible}
+    \label{fig:compat_5000_2500}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=5.0in]{figures/conv_all_benchmark_50_25.pdf}
+    \caption{$M=50$, $N=25$, $A$ and $b$ are randomly initialized.
+             $A$ is incompatible}
+    \label{fig:incompat_50_25}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=5.0in]{figures/conv_all_benchmark_500_250.pdf}
+    \caption{$M=500$, $N=250$, $A$ and $b$ are randomly initialized.
+             $A$ is incompatible}
+    \label{fig:incompat_500_250}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=5.0in]{figures/conv_all_benchmark_5000_2500.pdf}
+    \caption{$M=5000$, $N=2500$, $A$ and $b$ are randomly initialized.
+             $A$ is incompatible}
+    \label{fig:incompat_5000_2500}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=5.0in]{figures/x_comparison_usymqr_lsqr.pdf}
+    \caption{Comparison between the solutions returned by \alg{USYMQR} and 
+             \alg{LSQR}. The model problem used was the $M=500$, $N=250$ 
+             case.}
+    \label{fig:x_lsqr_usymqr}
+\end{figure}
 
 %%% NEED THESE %%%
 % random square matrices 
@@ -322,6 +521,8 @@ we return the stop flag \texttt{11}.
 
 %% on average, matlab uses 0.0024 sec on matrix-vector product for 
 %% 2000-2000, and Eigen uses 0.0036
+
+%% lsmr and lsqr only out-perform usymqr for compatible lsq problems
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
