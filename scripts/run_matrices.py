@@ -2,13 +2,22 @@
 import glob,os
 import numpy as np
 from subprocess import call
+from Queue import Queue
+from threading import Thread, current_thread
 
 def Call_Cmd(cmd): 
     print cmd
     call(cmd, shell=True)
 
+def job(q,tid):
+    while True: 
+        cmd = q.get()
+        Call_Cmd(cmd)
+        q.task_done()
+
 def Run_UFL():
     mode = 'USYMQR'
+    num_threads = 48
 
     if mode == 'USYMQR': 
         modeName = 'USYMQR'
@@ -20,6 +29,13 @@ def Run_UFL():
         return
 
     collection = 'matrices/list_maxrows_10000_maxcols_10000_real'
+    q = Queue(maxsize=0)
+
+    for tid in range(num_threads):
+        worker = Thread(target=job, args=(q,tid,))
+        worker.setDaemon(True)
+        worker.start()
+
     # collection = 'matrices/tests'
     groups = glob.glob('%s/*' %(collection))
     for g in groups: 
@@ -32,7 +48,10 @@ def Run_UFL():
             if os.path.isfile(logfile): 
                 continue
             cmd = 'bin/ufl_test %s %d 2>&1 > %s' %(mtxfile, modeId, logfile)
-            Call_Cmd(cmd)
+            q.put(cmd)
+            # Call_Cmd(cmd)
+
+    q.join()
 
 def Run_Random(): 
     M = [50, 500, 5000]

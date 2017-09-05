@@ -1,6 +1,7 @@
 #ifndef TRIDIAGONAL_MATRIX_HPP
 #define TRIDIAGONAL_MATRIX_HPP
 #include <vector>
+#include <iterator>
 #include "macros.h" 
 //##############################################################################
 // Class Tridiagonal_Matrix

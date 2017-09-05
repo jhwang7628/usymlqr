@@ -1,6 +1,7 @@
 bin
 build
 data
+list*
 matrices
 *.txt
 *.mod

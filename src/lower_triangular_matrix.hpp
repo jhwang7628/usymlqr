@@ -1,5 +1,6 @@
 #ifndef LOWER_TRIANGULAR_MATRIX_HPP
 #define LOWER_TRIANGULAR_MATRIX_HPP
+#include <iterator>
 #include "macros.h" 
 //##############################################################################
 // Class Lower_Triangular_Matrix

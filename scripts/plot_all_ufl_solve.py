@@ -100,5 +100,5 @@ with open(listfile,'r') as stream:
     plt.legend(loc=2)
     plt.savefig('doc/figures/ufl_residual_reduction_10k.pdf')
 
-    plt.show()
+    # plt.show()
 
