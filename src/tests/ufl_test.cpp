@@ -70,7 +70,7 @@ int main(int argc, char **argv)
     fclose(file); 
 
     // settings
-    const int maxStep = std::max(M,N)*5;
+    const int maxStep = std::max(M,N)*20;
     // constructing b
     T_Vector x0    = T_Vector::Zero(N); 
     T_Vector xstar = T_Vector::Random(N); 

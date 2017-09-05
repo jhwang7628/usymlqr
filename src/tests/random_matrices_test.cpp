@@ -6,7 +6,7 @@
 #include "sparse_matrix.hpp"
 #include "usym_tridiag.hpp"
 #include "Eigen/Dense"
-#define GENERATE_COMPATIBLE_SYSTEM
+//#define GENERATE_COMPATIBLE_SYSTEM
 //##############################################################################
 using T = double; 
 using T_Vector = Eigen::Matrix<T,Eigen::Dynamic,1>; 
@@ -47,10 +47,11 @@ int main(int argc, char **argv)
     T rnorm; 
 
     // determine filename
-    std::string filename_out, filename_A, filename_b;
+    std::string filename_out, filename_A, filename_b, filename_x;
     filename_out = datadir + "/" + modeName + ".log"; 
     filename_A   = datadir + "/" + "A.txt"; 
     filename_b   = datadir + "/" + "b.txt"; 
+    filename_x   = datadir + "/" + modeName + "_x.txt";
     if (File_Exists(filename_out))
     {
         std::cout << "**WARNING** Log file exists, abort solve: " 
@@ -75,5 +76,9 @@ int main(int argc, char **argv)
     file.open(filename_b.c_str(), std::ios::out); 
     file.precision(16);
     file << b << std::endl;
+    file.close(); 
+    file.open(filename_x.c_str(), std::ios::out); 
+    file.precision(16);
+    file << x << std::endl;
     file.close(); 
 }

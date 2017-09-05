@@ -13,6 +13,7 @@ class Matlab_Solver_Results:
         self.timing   = None
         self.flag     = None
         self.r_exact  = None
+        self.relNormAr= None
 
         self.itnv     = None
 
@@ -29,11 +30,12 @@ class Matlab_Solver_Results:
         results.stype    = solver_type
         d = data_dir; s = solver_type
 
-        results.steps  = int(open('%s/%s_ite.txt'  %(d, s)).readline(1))
-        results.flag   = int(open('%s/%s_flag.txt' %(d, s)).readline(1))
-        results.resv   = np.loadtxt('%s/%s_resv.txt' %(d, s))
-        results.timing = np.loadtxt('%s/%s_t.txt'    %(d, s))
-        results.r_exact= np.loadtxt('%s/%s_res.txt'  %(d, s))
+        results.steps    = int(open('%s/%s_ite.txt'     %(d, s)).readline(1))
+        results.flag     = int(open('%s/%s_flag.txt'    %(d, s)).readline(1))
+        results.resv     = np.loadtxt('%s/%s_resv.txt'  %(d, s))
+        results.timing   = np.loadtxt('%s/%s_t.txt'     %(d, s))
+        results.r_exact  = np.loadtxt('%s/%s_res.txt'   %(d, s))
+        results.relNormAr= np.loadtxt('%s/%s_lsvec.txt' %(d, s))
 
         results.itnv   = range(len(results.resv))
 

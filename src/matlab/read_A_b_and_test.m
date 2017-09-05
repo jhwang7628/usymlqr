@@ -1,11 +1,12 @@
 % settings
 EPS = 1E-12;
 maxItnMult = 100;
-folder = '../../data/random_mat/benchmark_compatible_5000_2500';
+folder = '../../data/random_mat/benchmark_5000_2500';
 
+% is_ufl = 0
 read_mat  = 1;
 run_lsqr  = 1;
-run_lsmr  = 1;
+run_lsmr  = 0;
 run_bcgs  = 0;
 run_bcgsp = 0;
 
@@ -38,31 +39,33 @@ maxItn = max(max(size(A,1), size(A,2)),size(b,1))*maxItnMult;
 if run_lsqr == 1
     fprintf('Performing LSQR\n')
     tic
-    [lsqr_x, lsqr_flag, lsqr_resl, lsqr_ite, lsqr_resv] = lsqr(A, b, EPS, maxItn);
+    [lsqr_x, lsqr_flag, lsqr_resl, lsqr_ite, lsqr_resv, lsqr_lesvec] = lsqr(A, b, EPS, maxItn);
     lsqr_t = toc
     lsqr_r = A*lsqr_x - b; 
-    dlmwrite(sprintf('%s/lsqr_x.txt'   , folder), lsqr_x    ); 
-    dlmwrite(sprintf('%s/lsqr_flag.txt', folder), lsqr_flag ); 
-    dlmwrite(sprintf('%s/lsqr_resl.txt', folder), lsqr_resl ); 
-    dlmwrite(sprintf('%s/lsqr_ite.txt' , folder), lsqr_ite  ); 
-    dlmwrite(sprintf('%s/lsqr_t.txt'   , folder), lsqr_t    ); 
-    dlmwrite(sprintf('%s/lsqr_resv.txt', folder), lsqr_resv ); 
-    dlmwrite(sprintf('%s/lsqr_res.txt' , folder), lsqr_r    ); 
+    dlmwrite(sprintf('%s/lsqr_x.txt'     , folder), lsqr_x     ); 
+    dlmwrite(sprintf('%s/lsqr_flag.txt'  , folder), lsqr_flag  ); 
+    dlmwrite(sprintf('%s/lsqr_resl.txt'  , folder), lsqr_resl  ); 
+    dlmwrite(sprintf('%s/lsqr_ite.txt'   , folder), lsqr_ite   ); 
+    dlmwrite(sprintf('%s/lsqr_t.txt'     , folder), lsqr_t     ); 
+    dlmwrite(sprintf('%s/lsqr_resv.txt'  , folder), lsqr_resv  ); 
+    dlmwrite(sprintf('%s/lsqr_res.txt'   , folder), lsqr_r     ); 
+    dlmwrite(sprintf('%s/lsqr_lsvec.txt' , folder), lsqr_lesvec); 
 end
  
 if run_lsmr == 1
     fprintf('Performing LSMR\n')
     tic
-    [lsmr_x, lsmr_flag, lsmr_ite, lsmr_resl, lsmr_resv] = lsmr(A, b, 0, EPS, EPS, [], maxItn, [], 1);
+    [lsmr_x, lsmr_flag, lsmr_ite, lsmr_resl, lsmr_resv, lsmr_lsvec] = lsmr(A, b, 0, EPS, EPS, [], maxItn, [], 1);
     lsmr_t = toc
     lsmr_r = A*lsmr_x - b; 
-    dlmwrite(sprintf('%s/lsmr_x.txt'   , folder), lsmr_x    ); 
-    dlmwrite(sprintf('%s/lsmr_flag.txt', folder), lsmr_flag ); 
-    dlmwrite(sprintf('%s/lsmr_resl.txt' , folder), lsmr_resl); 
-    dlmwrite(sprintf('%s/lsmr_ite.txt' , folder), lsmr_ite  ); 
-    dlmwrite(sprintf('%s/lsmr_t.txt'   , folder), lsmr_t    ); 
-    dlmwrite(sprintf('%s/lsmr_resv.txt', folder), lsmr_resv ); 
-    dlmwrite(sprintf('%s/lsmr_res.txt' , folder), lsmr_r    ); 
+    dlmwrite(sprintf('%s/lsmr_x.txt'    , folder), lsmr_x    ); 
+    dlmwrite(sprintf('%s/lsmr_flag.txt' , folder), lsmr_flag ); 
+    dlmwrite(sprintf('%s/lsmr_resl.txt' , folder), lsmr_resl ); 
+    dlmwrite(sprintf('%s/lsmr_ite.txt'  , folder), lsmr_ite  ); 
+    dlmwrite(sprintf('%s/lsmr_t.txt'    , folder), lsmr_t    ); 
+    dlmwrite(sprintf('%s/lsmr_resv.txt' , folder), lsmr_resv ); 
+    dlmwrite(sprintf('%s/lsmr_lsvec.txt', folder), lsmr_lsvec); 
+    dlmwrite(sprintf('%s/lsmr_res.txt'  , folder), lsmr_r    ); 
 end
 
 if run_bcgs == 1
