@@ -78,13 +78,13 @@ methods for unsymmetric matrices. In addition, as pointed out in
 \alg{USYMQR} reduces to \alg{LSQR}) can handle least-square problems 
 (both of them can solve underdetermined system). \\
 
-Our main contribution, in addition to providing with a tested 
+Our main contribution, in addition to providing a tested 
 implementation in yet another language, is to evaluate the algorithms 
-on a variety of matrices, including \emph{The Unversity of Florida Sparse 
+with a variety of matrices, including \emph{The University of Florida Sparse 
 Matrix Collection} by Tim Davis \etal \cite{davis:2011}. 
-Hundreds of different matrices originated from problems in many 
+About a thousand different matrices originated from problems in many 
 different areas (please see \cite{davis:2011} for the collection) were 
-run through \alg{USYMLQ} and \alg{USYMQR} solvers. In addition, for 
+run through the \alg{USYMLQ} and \alg{USYMQR} solvers. In addition, for 
 a few selected problems, we compared the algorithms to the perhaps 
 more well-known sparse linear system solvers including \alg{BiCGStab}, 
 \alg{LSQR} and \alg{LSMR}. Since these implementations are only 
@@ -167,11 +167,11 @@ The algorithm \textproc{TriDiag} can be used to solve the linear system
 where $A$ is a general, unsymmetric $M\times N$ matrix. When $M > N$, 
 we seek the solution to the least-square problem 
 $\min\limits_x \|A x - b \|_2$. Note that in the tridiagonalization 
-algorithm, $A$ is only defined by the operations $y \leftarrow Ax + y$ 
-and $y \leftarrow A^* x + y$. Therefore both algorithms are suited for
+algorithm, $A$ is only defined by the operations $y \leftarrow Ax$ 
+and $y \leftarrow A^* x$. Therefore both algorithms are suited for
 solving large, sparse systems.\\
 
-We start the algorithm by assigning $p_1 = r_0 / \|r_0$, where 
+We start the algorithm by assigning $p_1 = r_0 / \|r_0\|$, where 
 $r_0 = b - A x_0$ is the residual for an initial guess $x_0$.
 $q_1$ can be chosen randomly. However, in \cite{reichel:2008}, it was
 shown that it can be beneficial to set $q_1 \approx x$, which is 
@@ -235,7 +235,7 @@ a free and open-sourced C++ template library for linear algebra
 \cite{sw:Eigen}. It is header-only and the source code of version 3.3.4
 is included in the repository. Our \alg{USYMLQ} implementation was compared 
 to a Matlab version and on average is $30\%$ slower, which is probably 
-due to the underlying matrix-vector multiplication performance difference 
+due to the underlying matrix-vector multiplication performance difference.
 Matlab, which uses Intel MKL as backend, performs matrix-vector 
 multiplication about $30\%$ faster than Eigen; this test was performed 
 on a $2000\times 2000$ matrix (0.0024 sec vs 0.0036 sec). 
@@ -523,7 +523,7 @@ discussion on only unsymmetric, real matrices but our algorithms and
 implementation can be readily extended to handle complex and integer
 matrices (only test modules and proper linear algebra classes need to 
 be rewritten).  Out of these matrices, we further restrict ourselves 
-to problems that have less than $10000$ rows and $10000$ cols, mainly 
+to ones that have less than $10000$ rows and $10000$ cols, mainly 
 due to constraint on time and computational power. \\
 
 We found in total $1017$ matrices that satisfy the constraints mentioned
@@ -554,7 +554,7 @@ $\texttt{maxItn} = 20\max(M,N)$.
 \end{figure}
 
 We were able to obtain reasonable solutions for the majority of the problems. 
-However, there are some problems that give our solver troubles. If 
+However, there are some matrices that give our solver troubles. If 
 residual reduction at $10^{-3}$ is needed, then \alg{USYMLQ} solves $79.8\%$
 of the problems and \alg{USYMQR} solves $98.5\%$; if residual reduction
 at $10^{-6}$ is needed, then \alg{USYMLQ} solves only $43.2\%$ of the problem
