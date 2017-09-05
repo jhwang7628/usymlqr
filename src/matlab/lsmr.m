@@ -1,4 +1,4 @@
-function [x, istop, itn, normr, resvec, normAr, normA, condA, normx]...
+function [x, istop, itn, normr, resvec, lsvec, normAr, normA, condA, normx]...
    = lsmr(A, b, lambda, atol, btol, conlim, itnlim, localSize, show)
 
 % LSMR   Iterative solver for least-squares problems.
@@ -134,6 +134,7 @@ function [x, istop, itn, normr, resvec, normAr, normA, condA, normx]...
   pcount = 0;    % print counter
 
   resvec = []; 
+  lsvec  = [];
 
   % Determine dimensions m and n, and
   % form the first vectors u and v.
@@ -232,6 +233,7 @@ function [x, istop, itn, normr, resvec, normAr, normA, condA, normx]...
   % Exit if b=0 or A'b = 0.
 
   normAr = alpha * beta;
+  lsvec = [normAr];
   if normAr == 0, disp(msg(1,:)); return, end
 
   % Heading for iteration log.
@@ -364,6 +366,7 @@ function [x, istop, itn, normr, resvec, normAr, normA, condA, normx]...
 
     % Compute norms for convergence testing.
     normAr  = abs(zetabar);
+    lsvec   = [lsvec; normAr/normA;];
     normx   = norm(x);
 
     % Now use these norms to estimate certain other quantities,

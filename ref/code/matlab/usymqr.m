@@ -1,4 +1,4 @@
-function [x, istop, itn, rnorm, Anorm, Arnorm] = ...
+function [x, istop, itn, rnorm, Anorm, Arnorm, Arnormvec] = ...
     usymqr(A,b,c,atol,btol,maxit)
 
     %------------------------------------------------------------------
@@ -44,6 +44,7 @@ function [x, istop, itn, rnorm, Anorm, Arnorm] = ...
 
     m = length(b);
     n = length(c);
+    Arnormvec = [];
     
     if nargin < 4 || isempty(atol)      , atol    = 1e-6;       end
     if nargin < 5 || isempty(btol)      , btol    = 1e-6;       end
@@ -109,6 +110,7 @@ function [x, istop, itn, rnorm, Anorm, Arnorm] = ...
         Arnorm = rnorm*norm([gamold*q1 + alfa*q2; gama*q2]);
         Anorm = sqrt(AAnorm);
         AAnorm = AAnorm + alfa^2 + beta^2 + gama^2;
+        Arnormvec = [Arnormvec; Arnorm/Anorm];
         
         if (Arnorm/(Anorm*rnorm) < atol) istop = 2; end
         
@@ -135,6 +137,7 @@ function [x, istop, itn, rnorm, Anorm, Arnorm] = ...
         w3 = ( vold - sigma*w2 - tauold*w1 )/rho;
         
         x = x + rhs1*w3;
+
         w1 = w2; w2 = w3; 
 
         % Check convergence criteria
@@ -151,6 +154,6 @@ function [x, istop, itn, rnorm, Anorm, Arnorm] = ...
         gamold = gama;
         cold = c;
     end
-    
+
     if( istop == 0 ) istop = 7; end;
 end
