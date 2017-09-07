@@ -41,3 +41,6 @@ Please see `src/tests` for more examples.
 ## Documentation
 Please see `doc/documentation.pdf` for more detailed analysis and 
 solver testing.
+
+## Credits
+Author: [Jui-Hsien Wang](http://stanford.edu/~jw969/)
